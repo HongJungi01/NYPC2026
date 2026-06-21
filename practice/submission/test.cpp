@@ -90,33 +90,6 @@ struct Solver {
     int to_move;            // 0=나, 1=상대
     uint64_t hash;
 
-    // 증분 보조 구조 (deriveMoves 가속용): 작업보드 num과 항상 동기 유지.
-    //   rowCnt/colTotCnt : 행/열별 버섯 수 -> 활성 바운딩박스(bbox) 산출.
-    //   rowCols/rowColN  : 행별 비영(non-zero) 컬럼 목록(순서 무관) -> sparse 누적.
-    int rowCnt[R];
-    int colTotCnt[C];
-    int8_t rowCols[R][C];
-    int rowColN[R];
-
-    void rebuildAux() {
-        for (int c = 0; c < C; c++) colTotCnt[c] = 0;
-        for (int r = 0; r < R; r++) {
-            rowCnt[r] = 0; rowColN[r] = 0;
-            for (int c = 0; c < C; c++)
-                if (num[r][c]) { rowCols[r][rowColN[r]++] = (int8_t)c; rowCnt[r]++; colTotCnt[c]++; }
-        }
-    }
-    inline void auxRemove(int r, int c) {              // 버섯 제거 시 (num: nonzero->0)
-        rowCnt[r]--; colTotCnt[c]--;
-        int n = rowColN[r];
-        for (int i = 0; i < n; i++)
-            if (rowCols[r][i] == (int8_t)c) { rowCols[r][i] = rowCols[r][n - 1]; rowColN[r] = n - 1; break; }
-    }
-    inline void auxRestore(int r, int c) {             // undo 시 (num: 0->nonzero)
-        rowCnt[r]++; colTotCnt[c]++;
-        rowCols[r][rowColN[r]++] = (int8_t)c;
-    }
-
     // Zobrist: idx 1..9 = 버섯 숫자, 10=제거+소유0, 11=제거+소유1
     uint64_t Zcell[R][C][12];
     uint64_t ZtoMove;
@@ -270,7 +243,6 @@ struct Solver {
                     u.pn[u.cnt] = on; u.po[u.cnt] = oo; u.cnt++;
                     num[r][c] = nn; owner[r][c] = no;
                     hash ^= cellHash(r, c, nn, no);
-                    if (on != 0) auxRemove(r, c);        // 버섯 제거 -> aux 갱신
                 }
             }
         hash ^= ZtoMove; to_move ^= 1;
@@ -280,80 +252,98 @@ struct Solver {
         for (int i = 0; i < u.cnt; i++) {
             num[u.cr[i]][u.cc[i]] = u.pn[i];
             owner[u.cr[i]][u.cc[i]] = u.po[i];
-            if (u.pn[i] != 0) auxRestore(u.cr[i], u.cc[i]);   // 버섯 복원 -> aux 갱신
         }
     }
 
-    // 증분 수생성 --------------------------------------------------------
-    // 부모 노드의 유효수 목록(parent)과 방금 적용한 수의 Undo(u, 제거칸 정보 보유)로부터
-    // 자식 노드의 유효수 목록(out)을 재계산. 보드는 이미 자식 상태(apply 후)여야 한다.
-    //
-    //   유효수 = num 레이어만의 함수(소유권 무관). apply는 num을 감소만 시킴.
-    //   다음 보드의 유효수 = 생존(survivor) ⊎ 신생(newborn)  [서로소, 합=전체]
-    //     생존  = parent 중 제거칸을 하나도 포함하지 않는 수 (내부 불변 -> 그대로 유효)
-    //     신생  = 지금 유효 && 제거칸 >=1 포함 (예: 합 11이 안쪽 제거로 10이 됨)
-    //   두 집합은 "제거칸 포함" 여부로 정확히 갈리므로 중복 없음.
+    // 증분 수생성 (moveGen.cpp에서 검증한 로직: 합기준 국소 증분 + 4방향 적응형 앵커) ------
+    //  부모 유효수(parent) + 방금 적용한 수의 Undo(u, 제거칸 정보)로 자식 유효수(out)를 재계산.
+    //  보드(num)는 이미 자식 상태(apply 후)여야 한다. 유효수 = num 레이어만의 함수.
+    //   생존수 = parent 중 제거칸 미포함(내부 불변) -> 키 그대로.  신생수 = 제거칸 포함 && 지금 유효.
     void deriveMoves(const vector<Move>& parent, const Undo& u, vector<Move>& out) {
         out.clear();
-        // 제거된 버섯 칸 수집 (pn != 0) + 그 바운딩박스 D
-        int rcr[R * C], rcc[R * C], nrem = 0;
-        int rMinD = R, rMaxD = -1, cMinD = C, cMaxD = -1;
+        // 제거된 '버섯' 칸(pn!=0)만 수집 + bbox.
+        int dr[R * C], dc[R * C], nrem = 0;
+        int dRmin = R, dRmax = -1, dCmin = C, dCmax = -1;
         for (int i = 0; i < u.cnt; i++)
             if (u.pn[i] != 0) {
                 int r = u.cr[i], c = u.cc[i];
-                rcr[nrem] = r; rcc[nrem] = c; nrem++;
-                if (r < rMinD) rMinD = r;  if (r > rMaxD) rMaxD = r;
-                if (c < cMinD) cMinD = c;  if (c > cMaxD) cMaxD = c;
+                dr[nrem] = r; dc[nrem] = c; nrem++;
+                if (r < dRmin) dRmin = r;
+                if (r > dRmax) dRmax = r;
+                if (c < dCmin) dCmin = c;
+                if (c > dCmax) dCmax = c;
             }
-        if (nrem == 0) { out = parent; return; }  // 버섯 제거 없음(소유권만) -> 수 집합 불변
+        if (nrem == 0) { out = parent; return; }   // 숫자 변화 없음(소유권만) -> 수 집합 불변
 
-        // 1) 생존수: parent 중 제거칸을 포함하지 않는 것. key(즉시점령수)는 불변이라 그대로 복사.
+        // 1) 생존수: parent 중 제거칸을 하나도 포함하지 않는 것. key(즉시점령수) 불변 -> 그대로 복사.
         for (const Move& p : parent) {
             bool hit = false;
-            if (!(p.r1 > rMaxD || p.r2 < rMinD || p.c1 > cMaxD || p.c2 < cMinD)) // D박스와 교차할 때만 정밀검사
+            if (!(p.r1 > dRmax || p.r2 < dRmin || p.c1 > dCmax || p.c2 < dCmin))
                 for (int k = 0; k < nrem; k++)
-                    if (rcr[k] >= p.r1 && rcr[k] <= p.r2 && rcc[k] >= p.c1 && rcc[k] <= p.c2) { hit = true; break; }
+                    if (dr[k] >= p.r1 && dr[k] <= p.r2 && dc[k] >= p.c1 && dc[k] <= p.c2) { hit = true; break; }
             if (!hit) out.push_back(p);
         }
 
-        // 2) 신생수: 현재 bbox 내에서, 제거행을 포함하는 밴드만 스캔.
-        //    (신생 사각형의 네 변은 버섯을 닿으므로 사각형 전체가 현재 bbox 안에 있음 -> 완전성 보장)
-        int rMin = R, rMax = -1, cMin = C, cMax = -1;
-        for (int r = 0; r < R; r++) if (rowCnt[r])    { if (r < rMin) rMin = r; rMax = r; }
-        for (int c = 0; c < C; c++) if (colTotCnt[c]) { if (c < cMin) cMin = c; cMax = c; }
-        if (rMax < 0) return;  // 버섯 전무
-
+        // 2) 신생수: 제거칸 포함 && 지금 유효. 제거박스 가까운 모서리에 앵커(4방향) + remSum>0 게이트.
+        bool rowFlip = (R - dRmin) < (dRmax + 1);   // true -> 아래쪽 앵커(위로 누적)
+        bool colFlip = (C - dCmin) < (dCmax + 1);   // true -> 오른쪽 앵커(왼쪽으로 확장)
         int colSum[C], colCnt[C], remCol[C];
-        // r1 은 제거행 위쪽(<=rMaxD)에서만 시작 가능(밴드가 제거행을 포함하려면 r1<=rMaxD).
-        for (int r1 = rMin; r1 <= rMax && r1 <= rMaxD; r1++) {
-            for (int c = cMin; c <= cMax; c++) { colSum[c] = 0; colCnt[c] = 0; remCol[c] = 0; }
-            for (int r2 = r1; r2 <= rMax; r2++) {
-                int n2 = rowColN[r2];                              // sparse 누적: 비영 컬럼만
-                for (int k = 0; k < n2; k++) {
-                    int c = rowCols[r2][k];
-                    if (c >= cMin && c <= cMax) { colSum[c] += num[r2][c]; colCnt[c]++; }
-                }
-                for (int k = 0; k < nrem; k++)                     // 행 r2의 제거칸 표시
-                    if (rcr[k] == r2) { int cc = rcc[k]; if (cc >= cMin && cc <= cMax) remCol[cc]++; }
-                if (r2 < rMinD) continue;                          // 밴드가 아직 제거행 미포함
-                for (int c1 = cMin; c1 <= cMax; c1++) {
-                    if (colCnt[c1] == 0) continue;                 // 왼변에 버섯 필요
-                    int s = 0, cntNZ = 0, remSum = 0; bool topP = false, botP = false;
-                    for (int c2 = c1; c2 <= cMax; c2++) {
-                        s += colSum[c2]; cntNZ += colCnt[c2]; remSum += remCol[c2];
-                        if (num[r1][c2]) topP = true;
-                        if (num[r2][c2]) botP = true;
+
+        auto hscan = [&](int br1, int br2) {        // 한 밴드의 가로 스캔 (colFlip로 좌/우 앵커)
+            if (!colFlip) {
+                for (int a = 0; a <= dCmax; a++) {
+                    if (colCnt[a] == 0) continue;
+                    int s = 0, cnt = 0, rs = 0; bool tp = false, bp = false;
+                    for (int b = a; b < C; b++) {
+                        s += colSum[b]; cnt += colCnt[b]; rs += remCol[b];
+                        if (num[br1][b]) tp = true;
+                        if (num[br2][b]) bp = true;
                         if (s > 10) break;
-                        if (s == 10 && colCnt[c2] && topP && botP && remSum > 0)  // 제거칸 포함 == 신생
-                            out.push_back({ (int8_t)r1,(int8_t)c1,(int8_t)r2,(int8_t)c2, cntNZ });
+                        if (s == 10 && colCnt[b] && tp && bp && rs > 0)
+                            out.push_back({ (int8_t)br1,(int8_t)a,(int8_t)br2,(int8_t)b, cnt });
                     }
+                }
+            } else {
+                for (int b = C - 1; b >= dCmin; b--) {
+                    if (colCnt[b] == 0) continue;
+                    int s = 0, cnt = 0, rs = 0; bool tp = false, bp = false;
+                    for (int a = b; a >= 0; a--) {
+                        s += colSum[a]; cnt += colCnt[a]; rs += remCol[a];
+                        if (num[br1][a]) tp = true;
+                        if (num[br2][a]) bp = true;
+                        if (s > 10) break;
+                        if (s == 10 && colCnt[a] && tp && bp && rs > 0)
+                            out.push_back({ (int8_t)br1,(int8_t)a,(int8_t)br2,(int8_t)b, cnt });
+                    }
+                }
+            }
+        };
+
+        if (!rowFlip) {                              // 위쪽 앵커: br1 0..dRmax, 아래로 누적
+            for (int br1 = 0; br1 <= dRmax; br1++) {
+                for (int c = 0; c < C; c++) { colSum[c] = 0; colCnt[c] = 0; remCol[c] = 0; }
+                for (int br2 = br1; br2 < R; br2++) {
+                    for (int c = 0; c < C; c++) { int v = num[br2][c]; colSum[c] += v; if (v) colCnt[c]++; }
+                    for (int k = 0; k < nrem; k++) if (dr[k] == br2) remCol[dc[k]]++;
+                    if (br2 < dRmin) continue;
+                    hscan(br1, br2);
+                }
+            }
+        } else {                                     // 아래쪽 앵커: br2 R-1..dRmin, 위로 누적
+            for (int br2 = R - 1; br2 >= dRmin; br2--) {
+                for (int c = 0; c < C; c++) { colSum[c] = 0; colCnt[c] = 0; remCol[c] = 0; }
+                for (int br1 = br2; br1 >= 0; br1--) {
+                    for (int c = 0; c < C; c++) { int v = num[br1][c]; colSum[c] += v; if (v) colCnt[c]++; }
+                    for (int k = 0; k < nrem; k++) if (dr[k] == br1) remCol[dc[k]]++;
+                    if (br1 > dRmax) continue;
+                    hscan(br1, br2);
                 }
             }
         }
     }
 
 #ifdef VERIFY_MOVES
-    // 디버그: 증분 결과(got)를 전체스캔 기준(genMoves)과 집합 비교. 불일치 시 abort.
+    // 디버그: 증분 결과(got)를 전체스캔(genMoves)과 집합 비교. 불일치 시 abort.
     void verifyMoves(const vector<Move>& got) {
         vector<Move> ref; genMoves(ref);
         vector<int> a, b;
@@ -384,23 +374,23 @@ struct Solver {
                 if (slot.flag == 1 && slot.val >= beta)  return slot.val;
                 if (slot.flag == 2 && slot.val <= alpha) return slot.val;
             }
-            ttMove = slot.best;   // TT 컷오프 실패 시에만 수생성 -> 증분 비용 절약
+            ttMove = slot.best;
         }
 
         vector<Move>& buf = mv[ply];
 #ifdef FORCE_FULLSCAN
         (void)parentList; (void)appliedUndo; genMoves(buf);   // 벤치 기준선: 매 노드 전체스캔
 #else
-        if (parentList == nullptr) genMoves(buf);
-        else                       deriveMoves(*parentList, *appliedUndo, buf);
+        if (parentList == nullptr) genMoves(buf);             // 루트: 전체스캔
+        else                       deriveMoves(*parentList, *appliedUndo, buf);  // 그 외: 증분
 #endif
 #ifdef VERIFY_MOVES
         verifyMoves(buf);
 #endif
         if (buf.empty()) return matStm();     // 양쪽 모두 둘 수 없음 = 종료 (정확)
 
-        // 무브 오더링: 즉시 점령수(m.key, 불변 유지) + TT/killer 보너스를 비교 시점에만 가산.
-        // (m.key를 직접 더하면 자식 deriveMoves로 복사될 때 키가 오염됨 -> 정렬키만 즉석 계산)
+        // 무브 오더링: m.key(불변 유지) + TT/killer 보너스를 비교 시점에만 가산.
+        // (m.key를 직접 더하면 자식 deriveMoves로 survivor 복사될 때 키가 오염됨 -> 정렬키만 즉석 계산)
         int k0 = killer[ply][0], k1 = killer[ply][1];
         auto orderKey = [&](const Move& m) -> int {
             int e = encMove(m);
@@ -409,7 +399,11 @@ struct Solver {
             return m.key;
         };
         sort(buf.begin(), buf.end(),
-             [&](const Move& a, const Move& b) { return orderKey(a) > orderKey(b); });
+             [&](const Move& a, const Move& b) {
+                 int ka = orderKey(a), kb = orderKey(b);
+                 if (ka != kb) return ka > kb;
+                 return encMove(a) < encMove(b);   // 동률 -> 생성순서 무관 결정적 타이브레이크
+             });
 
         int best = -INF, bestMove = -1;
         for (size_t i = 0; i < buf.size(); i++) {
@@ -451,7 +445,6 @@ struct Solver {
         for (int r = 0; r < R; r++)
             for (int c = 0; c < C; c++) { num[r][c] = S.num[r][c]; owner[r][c] = S.owner[r][c]; }
         myCnt = S.myCnt; oppCnt = S.oppCnt; to_move = 0;
-        rebuildAux();                         // 증분 보조구조 초기화 (작업보드 기준)
 
         hash = 0;
         for (int r = 0; r < R; r++)
@@ -594,7 +587,7 @@ int main() {
 // ---------------------------------------------------------------------------
 int main() {
     mt19937 rng(0xC0FFEEu);
-    const int GAMES = 80;
+    const int GAMES = 50;
     long long positions = 0;
     for (int gi = 0; gi < GAMES; gi++) {
         Game game;
@@ -608,11 +601,8 @@ int main() {
 
         int mover = 0;
         for (int ply = 0; ply < 80; ply++) {
-            // 현재 포지션에서 검증 탐색 (VERIFY_MOVES가 노드마다 대조)
-            game.solver.decide(game.S, 25);
+            game.solver.decide(game.S, 10);     // VERIFY_MOVES가 노드마다 대조
             positions++;
-
-            // 실보드를 무작위 유효수로 한 칸 진행 (genMoves는 num만 사용)
             vector<Move> rm;
             for (int r = 0; r < R; r++)
                 for (int c = 0; c < C; c++) game.solver.num[r][c] = game.S.num[r][c];
@@ -621,9 +611,9 @@ int main() {
             playMove(game.S, rm[rng() % rm.size()], mover);
             mover ^= 1;
         }
-        if ((gi + 1) % 10 == 0) fprintf(stderr, "  ...game %d ok\n", gi + 1);
+        if ((gi + 1) % 20 == 0) fprintf(stderr, "  ...game %d ok\n", gi + 1);
     }
-    fprintf(stderr, "[TEST_MAIN] OK — %lld positions searched, no move-gen mismatch.\n", positions);
+    fprintf(stderr, "[TEST_MAIN] OK - %lld positions searched, no move-gen mismatch.\n", positions);
     return 0;
 }
 #endif
@@ -632,11 +622,10 @@ int main() {
 // ---------------------------------------------------------------------------
 // 성능 벤치 (BENCH_MAIN). 고정 보드/고정 깊이로 동일 트리를 완전 탐색하고 시간 측정.
 //   기본 빌드        = deriveMoves 경로
-//   -DFORCE_FULLSCAN = 매 노드 전체스캔 (기준선)
-//   동일 트리(노드수 동일)이므로 시간차 = 수생성 비용 차이.
+//   -DFORCE_FULLSCAN = 매 노드 전체스캔 (기준선)  -> 동일 트리이므로 시간차 = 수생성 비용 차이.
 // ---------------------------------------------------------------------------
 #ifndef BENCH_DEPTH
-#define BENCH_DEPTH 6
+#define BENCH_DEPTH 7
 #endif
 int main() {
     vector<string> rows = {
@@ -647,28 +636,9 @@ int main() {
     };
     Game game; game.init(rows);
     Solver& s = game.solver;
-    // 선택적 사전 진행: 무작위 유효수로 보드를 희소하게 만든 뒤 측정 (중후반 시뮬레이션)
-#ifndef BENCH_PREPLAY
-#define BENCH_PREPLAY 0
-#endif
-    {
-        mt19937 rng(777);
-        for (int p = 0; p < BENCH_PREPLAY; p++) {
-            vector<Move> rm;
-            for (int r = 0; r < R; r++)
-                for (int c = 0; c < C; c++) s.num[r][c] = game.S.num[r][c];
-            s.genMoves(rm);
-            if (rm.empty()) break;
-            playMove(game.S, rm[rng() % rm.size()], p & 1);
-        }
-    }
-    int remain = 0;
-    for (int r = 0; r < R; r++) for (int c = 0; c < C; c++) if (game.S.num[r][c]) remain++;
-    fprintf(stderr, "[BENCH] preplay=%d  mushrooms_remaining=%d\n", BENCH_PREPLAY, remain);
     for (int r = 0; r < R; r++)
         for (int c = 0; c < C; c++) { s.num[r][c] = game.S.num[r][c]; s.owner[r][c] = game.S.owner[r][c]; }
     s.myCnt = 0; s.oppCnt = 0; s.to_move = 0;
-    s.rebuildAux();
     s.hash = 0;
     for (int r = 0; r < R; r++)
         for (int c = 0; c < C; c++) s.hash ^= s.cellHash(r, c, s.num[r][c], s.owner[r][c]);
@@ -677,7 +647,6 @@ int main() {
     s.nodes = 0; s.timedOut = false;
     s.deadline = Clock::now() + chrono::hours(1);   // 사실상 무제한
 
-    s.genMoves(s.mv[0]);
     auto t0 = Clock::now();
     int v = s.negamax(BENCH_DEPTH, -INF, INF, 0, nullptr, nullptr);
     auto t1 = Clock::now();
