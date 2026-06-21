@@ -1,5 +1,14 @@
 // ============================================================================
-//  NYPC 2026 - "버섯 밭 점령 게임" Bot
+//  NYPC 2026 - "버섯 밭 점령 게임" Bot  [작업/실험 파일: 폰더 + 분기게이트 시간예산]
+//
+//  베이스: submission/ponder.cpp(엔진 + 폰더)를 복사. 그 위에 "분기 게이트 시간예산"만 추가.
+//  엔진/탐색/평가/폰더는 ponder.cpp 와 동일. 차이는 budgetFor()(아래) 의 env 튜닝 예산뿐.
+//  기본 env(미설정)면 ponder.cpp 와 동치(= sanity A/B 가 ~50/50 이어야 함).
+//
+//  ── 시간예산 튜닝 (budgetFor) ─────────────────────────────────────────────
+//   문제: 기존 decideBudget 은 내 시계(10초)의 ~50% 를 안 쓰고 버린다(로그 #32399).
+//   해법: 합법수(nLegal)가 '중간대(긴장 국면)' 일 때만 예산을 부스트해 남는 슬랙을 거기에 집중.
+//   env 키: TURN_DIV MOVE_CAP FRAC_DIV GATE_LO GATE_HI BOOST BOOST_CAP BOOST_FRAC (아래 Solver 필드 주석).
 //
 //  Architecture (adapted from the Connexion finals engine, perfect-info版):
 //   - 완전정보 결정론 2인 제로섬  ->  MCTS 불필요. Negamax + Alpha-Beta 채택.
@@ -8,6 +17,24 @@
 //   - 탐색: iterative deepening Negamax + AB + TT(Zobrist) + killer + 무브오더링
 //   - 시간관리: 누적 10초 -> 턴당 예산. 시간초과 시 직전 depth 결과 커밋.
 //   - endgame: 트리가 작아지면 deepening이 자연히 종료까지 풀어 정확해짐.
+//
+//  ── PONDER (상대 고민 시간 활용) ──────────────────────────────────────────
+//   내가 수를 둔 뒤 상대가 고민하는 동안 내 프로세스는 다음 입력을 기다리며 놀고 있다.
+//   그 "공짜 wall-clock"(내 시계엔 안 잡힘)에 백그라운드 스레드로 "상대 결정 노드"
+//   (= 내 수 직후, 상대가 둘 차례인 포지션)를 그대로 탐색해 TT(치환표)를 채운다.
+//   이 노드를 펼치면 상대의 '모든' 후보수 + 그 이후 내 응수들이 한꺼번에 TT 에 들어간다.
+//   → 상대가 실제로 어떤 수를 두든, 그 수 직후(내 차례) 포지션이 이미 그 깊이로 TT 에 있다.
+//     (단일 예측수만 펼치지 않으므로 "예측 빗나가면 전부 헛수고" 가 없다.)
+//
+//   ※ 패리티 정렬: TT 키엔 ply 마다 ZtoMove 가 접혀 들어가, 같은 보드라도 '도달 ply 홀짝'이
+//      다르면 키가 달라진다. 상대 노드는 다음 실제 탐색의 루트보다 1 ply 앞이므로, 폰더 루트
+//      해시에 ZtoMove 를 한 번 더 접어(아래 ponderOppNode) 패리티를 맞춘다. 그러면 폰더가
+//      만든 엔트리가 다음 실제 탐색의 노드 키와 정확히 일치한다.
+//   ※ 루트 TT 가드: 워밍으로 루트에 깊은 exact 엔트리가 생기면 negamax 가 루트에서 즉시
+//      컷오프해 rootBest 를 안 정하는 사고를 막으려, ply==0 에선 TT 컷오프를 끈다(아래).
+//   ※ 동기화: 다음 입력(OPP/TIME) 도착 즉시 atomic stopFlag 로 폰더 중단·join → 그 후에만
+//      메인이 solver 를 만진다(동시접근 0). TT 는 join 으로 안전 가시화. 폰더는 내 예산 미사용.
+//   ※ 토글: env PONDER_OFF 면 폰더 끔(A/B용), PONDER_DEBUG 면 매 수 도달깊이/노드수 stderr.
 // ============================================================================
 #include <iostream>
 #include <vector>
@@ -22,6 +49,8 @@
 #include <cstdlib>
 #include <climits>
 #include <cstdio>
+#include <thread>
+#include <atomic>
 
 using namespace std;
 using Clock = chrono::steady_clock;
@@ -30,7 +59,6 @@ static const int R = 10;   // rows
 static const int C = 17;   // cols
 static const int INF = 1000000;
 static const int MAXD = 64;
-static const int WIN_SCORE = 100000;  // 더블패스/데드보드 종료 점수 (mushroom ±WIN, INF 미만이라 INF 컷과 구분)
 
 // ---------------------------------------------------------------------------
 // Move: 직사각형 (r1,c1)-(r2,c2).  key = 정렬용(즉시 점령 칸수).
@@ -109,21 +137,35 @@ struct Solver {
     Clock::time_point deadline;
     bool timedOut = false;
     long long nodes = 0;
+    // [PONDER] 백그라운드 폰더 스레드를 메인이 즉시 중단시키는 플래그(매 노드 time_up 에서 점검).
+    //   폰더 외 일반 탐색에선 항상 false 라 동작 영향 없음.
+    std::atomic<bool> stopFlag{ false };
+    int reachedDepth = 0;          // [PONDER] 마지막 decide/ponder 가 완료한 최대 깊이(PONDER_DEBUG 용)
 
     Move rootBest;
 
-    // 평가 가중치 (스케일 일치 필수: material/터미널/leaf 동일 단위)
+    // 평가 가중치 (스케일 일치 필수: material/터미널/horizon 동일 단위)
     static const int W_MAT = 100;   // material 1칸 = 100
-    // mushroom 두뇌 이식: leaf 평가에 mobility(side-to-move 합법수 개수)를 가산.
-    //   0 = material-only(onlypass 봇), 1 = material + mobility(full 봇).
-    //   ★ 사이트 업로드 시 이 기본값(MOBILITY_DEFAULT)으로 봇 성격이 결정된다.
-    //     로컬 배틀은 소스 수정 없이 -DMOBILITY_DEFAULT=0/1 로 두 바이너리를 분리 컴파일.
-    //     (env MOBILITY가 있으면 그 값이 런타임 우선 — 빠른 로컬 토글용.)
-    //   패스 정책은 항상 ON(mushroom식 상시 전략패스 + 더블패스 ±WIN) — 게이트 없음.
-#ifndef MOBILITY_DEFAULT
-#define MOBILITY_DEFAULT 0
-#endif
-    int mobilityOn = MOBILITY_DEFAULT;
+    // 선턴 이니셔티브(다음 최대 점령) 가중. self-play A/B 결과 효과 없음(neutral~negative):
+    //   모든 수가 capture라 quiescence 개념이 없고 수 집합이 양쪽 공유 -> 차분 신호 부재.
+    //   기본 0(= material-only, 최강). env W_TEMPO로 재실험 가능.
+    int wTempo = 0;
+    // 자발적 패스 게이트: 한 노드 합법수 <= passGate && side-to-move 비열세일 때만 PASS를 후보로.
+    //   0 = 패스 비활성(= 기존 엔진과 동일). env PASS_GATE로 설정/튜닝.
+    int passGate = 7;
+
+    // ── 시간예산 튜닝 knobs (budgetFor) — 기본값 = self-play A/B 로 고른 추천 config ──
+    //   budget = (t1-250)/max(4, nz/turnDiv) 를 base 로, nLegal 이 [gateLo,gateHi] 구간이면 boost.
+    //   추천값(3 seed 페어 대조 vs ponder.exe: 99승62패 ↔ 기본 73승84패, ≈+15pp).
+    //   기존 decideBudget 와 동치로 되돌리려면 env GATE_LO=0 GATE_HI=0 TURN_DIV=6.
+    int turnDiv    = 9;     // env TURN_DIV  : estTurns=max(4,nz/turnDiv). ↑일수록 수당 예산↑(슬랙↓)
+    int moveCapMs  = 1000;  // env MOVE_CAP  : 평시 수당 상한(ms)
+    int fracDiv    = 8;     // env FRAC_DIV  : 평시 budget<=t1/fracDiv (고갈 방지)
+    int gateLo     = 8;     // env GATE_LO   : 부스트 밴드 하한(nLegal). gateLo>gateHi 면 게이트 off
+    int gateHi     = 26;    // env GATE_HI   : 부스트 밴드 상한(nLegal) — 중반 긴장 국면
+    int boostPct   = 250;   // env BOOST     : 부스트 배율(%) — 100=배율 없음
+    int boostCapMs = 2000;  // env BOOST_CAP : 부스트시 수당 상한(ms)
+    int boostFrac  = 4;     // env BOOST_FRAC: 부스트시 budget<=t1/boostFrac (평시보다 완화)
 
     Solver() {
         mt19937_64 rng(0x9E3779B97F4A7C15ULL);
@@ -132,7 +174,16 @@ struct Solver {
                 for (int k = 0; k < 12; k++) Zcell[r][c][k] = rng();
         ZtoMove = rng();
         ZprevPass = rng();
-        if (const char* e = getenv("MOBILITY")) mobilityOn = atoi(e);
+        if (const char* e = getenv("W_TEMPO")) wTempo = atoi(e);
+        if (const char* e = getenv("PASS_GATE")) passGate = atoi(e);
+        if (const char* e = getenv("TURN_DIV"))   turnDiv    = max(1, atoi(e));
+        if (const char* e = getenv("MOVE_CAP"))   moveCapMs  = max(1, atoi(e));
+        if (const char* e = getenv("FRAC_DIV"))   fracDiv    = max(1, atoi(e));
+        if (const char* e = getenv("GATE_LO"))    gateLo     = atoi(e);
+        if (const char* e = getenv("GATE_HI"))    gateHi     = atoi(e);
+        if (const char* e = getenv("BOOST"))      boostPct   = max(1, atoi(e));
+        if (const char* e = getenv("BOOST_CAP"))  boostCapMs = max(1, atoi(e));
+        if (const char* e = getenv("BOOST_FRAC")) boostFrac  = max(1, atoi(e));
         tt.assign((size_t)1 << TT_BITS, TTEnt{ 0, 0, -1, 0, 0 }); // depth=0 -> 빈 슬롯은 컷오프 불가
     }
 
@@ -142,6 +193,7 @@ struct Solver {
     }
     inline bool time_up() {
         if (timedOut) return true;
+        if (stopFlag.load(std::memory_order_relaxed)) { timedOut = true; return true; } // [PONDER] 외부 중단
         if (Clock::now() >= deadline) { timedOut = true; return true; }
         return false;
     }
@@ -149,6 +201,43 @@ struct Solver {
     inline int matStm() const {
         int e = myCnt - oppCnt;           // 항상 나(player0) 관점
         return (to_move == 0 ? e : -e) * W_MAT;
+    }
+
+    // 현재 보드에서 side-to-move가 즉시 점령 가능한 최대 칸수 (이니셔티브 신호).
+    // genMoves의 band 로직을 리스트/정렬 없이 best만 추출.
+    int scanBestCapture() const {
+        int colSum[C], colCnt[C];
+        int best = 0;
+        for (int r1 = 0; r1 < R; r1++) {
+            for (int c = 0; c < C; c++) { colSum[c] = 0; colCnt[c] = 0; }
+            for (int r2 = r1; r2 < R; r2++) {
+                for (int c = 0; c < C; c++) {
+                    int v = num[r2][c];
+                    colSum[c] += v;
+                    if (v) colCnt[c]++;
+                }
+                for (int c1 = 0; c1 < C; c1++) {
+                    if (colCnt[c1] == 0) continue;
+                    int s = 0, cntNZ = 0; bool topP = false, botP = false;
+                    for (int c2 = c1; c2 < C; c2++) {
+                        s += colSum[c2];
+                        cntNZ += colCnt[c2];
+                        if (num[r1][c2]) topP = true;
+                        if (num[r2][c2]) botP = true;
+                        if (s > 10) break;
+                        if (s == 10 && colCnt[c2] && topP && botP)
+                            if (cntNZ > best) best = cntNZ;
+                    }
+                }
+            }
+        }
+        return best;
+    }
+
+    // horizon(depth==0) 전용 휴리스틱: material + 선턴 이니셔티브.
+    // wTempo=0이면 leaf 스캔 생략 -> material-only와 동일 성능.
+    inline int horizonEval() const {
+        return wTempo ? matStm() + wTempo * scanBestCapture() : matStm();
     }
 
     // 유효 직사각형 전부 생성 (현재 num 레이어 기준)
@@ -233,7 +322,7 @@ struct Solver {
         hash ^= ZtoMove; to_move ^= 1;
     }
 
-    // 증분 수생성 (nodeGen.cpp에서 검증한 로직: 합기준 국소 증분 + 4방향 적응형 앵커) ------
+    // 증분 수생성 (moveGen.cpp에서 검증한 로직: 합기준 국소 증분 + 4방향 적응형 앵커) ------
     //  부모 유효수(parent) + 방금 적용한 수의 Undo(u, 제거칸 정보)로 자식 유효수(out)를 재계산.
     //  보드(num)는 이미 자식 상태(apply 후)여야 한다. 유효수 = num 레이어만의 함수.
     //   생존수 = parent 중 제거칸 미포함(내부 불변) -> 키 그대로.  신생수 = 제거칸 포함 && 지금 유효.
@@ -340,15 +429,7 @@ struct Solver {
     int negamax(int depth, int alpha, int beta, int ply,
                 const vector<Move>* parentList, const Undo* appliedUndo, bool prevWasPass) {
         if (time_up()) return matStm();
-        if (depth == 0) {
-            if (!mobilityOn) return matStm();
-            // mushroom 두뇌: leaf 평가 = material + side-to-move mobility(합법수 개수).
-            //   증분 deriveMoves로 개수만 계산(전체스캔 회피). root 외에는 parentList 항상 존재.
-            vector<Move>& lbuf = mv[ply];
-            if (parentList) deriveMoves(*parentList, *appliedUndo, lbuf);
-            else            genMoves(lbuf);
-            return matStm() + (int)lbuf.size();
-        }
+        if (depth == 0) return horizonEval();
 
         nodes++;
         const int origAlpha = alpha;
@@ -358,7 +439,10 @@ struct Solver {
         int ttMove = -1;
         TTEnt& slot = tt[hkey & ttMask];
         if (slot.key == hkey) {
-            if (slot.depth >= depth) {
+            // [PONDER] 루트(ply==0)에선 TT 컷오프 금지: 폰더가 채운 깊은 exact 엔트리로 즉시
+            //   리턴하면 rootBest 가 안 정해져 둔 수가 깨진다. 루트는 항상 무브 루프를 돌되
+            //   ttMove 로 정렬만 가속(자식들은 대부분 TT 히트라 거의 공짜). ply>0 는 기존과 동일.
+            if (ply > 0 && slot.depth >= depth) {
                 if (slot.flag == 0) return slot.val;
                 if (slot.flag == 1 && slot.val >= beta)  return slot.val;
                 if (slot.flag == 2 && slot.val <= alpha) return slot.val;
@@ -376,10 +460,7 @@ struct Solver {
 #ifdef VERIFY_MOVES
         verifyMoves(buf);
 #endif
-        if (buf.empty()) {                    // 합법수 없음 = 데드보드(수집합은 플레이어 무관) → 종료
-            int m = matStm();                 // mushroom식 ±WIN 종료 채점
-            return (m > 0) ? WIN_SCORE : (m < 0 ? -WIN_SCORE : 0);
-        }
+        if (buf.empty()) return matStm();     // 양쪽 모두 둘 수 없음 = 종료 (정확)
 
         // 무브 오더링: m.key(불변 유지) + TT/killer 보너스를 비교 시점에만 가산.
         // (m.key를 직접 더하면 자식 deriveMoves로 survivor 복사될 때 키가 오염됨 -> 정렬키만 즉석 계산)
@@ -424,13 +505,13 @@ struct Solver {
             }
         }
 
-        // mushroom식 상시 전략패스: 컷오프 전이면 항상 PASS를 마지막 후보로 평가
-        //   (alpha-beta상 'PASS 맨 뒤 정렬'과 동치). 동률은 실수 우선(> 만 갱신)이라 무용 패스 회피.
-        if (alpha < beta && !timedOut) {
+        // 자발적 패스 후보: 게이트(좁은 포지션 && 비열세) 충족 + 컷오프 전일 때만, 마지막에 평가.
+        //   실수로 이미 alpha가 높아져 대부분 컷 -> 비용 작음. 동률은 실수 우선(> 만 갱신)이라 무용 패스 회피.
+        if (passGate > 0 && (int)buf.size() <= passGate && matStm() >= 0
+            && alpha < beta && !timedOut) {
             int v;
             if (prevWasPass) {
-                int m = matStm();                                // 연속 패스 -> 더블패스 종료(±WIN)
-                v = (m > 0) ? WIN_SCORE : (m < 0 ? -WIN_SCORE : 0);
+                v = matStm();                                    // 연속 패스 -> 종료(내 관점, 정확)
             } else {
                 Undo u; applyPass(u);
                 v = -negamax(depth - 1, -beta, -alpha, ply + 1, &buf, &u, true);
@@ -451,9 +532,28 @@ struct Solver {
         return best;
     }
 
+    // 턴당 시간예산: base(자기보정 분할) + 분기게이트 부스트. nLegal/nz 는 decide() 에서 이미 계산됨.
+    //   기본 knobs(게이트 off)면 기존 decideBudget 공식과 동치. python 미러: logAnalyzer/analyze.py decide_budget().
+    int budgetFor(int t1, int nz, int nLegal) const {
+        int avail = max(1, t1 - 250);                 // flush/overhead 안전마진
+        int estTurns = max(4, nz / turnDiv);          // 남은 내 턴 추정 → 균등 분할 base
+        int budget = avail / estTurns;
+        int capMs = moveCapMs, fracCap = fracDiv;     // 평시 상한
+        if (gateLo <= gateHi && nLegal >= gateLo && nLegal <= gateHi) {  // 긴장 국면만 부스트
+            budget = (int)((long long)budget * boostPct / 100);
+            capMs = boostCapMs; fracCap = boostFrac;
+        }
+        budget = min(budget, capMs);
+        budget = min(budget, t1 / fracCap);           // 잔여시간 비율 상한(고갈 방지)
+        budget = min(budget, t1 / 3);                 // TLE 안전: 한 수가 시계를 비우지 못하게(항상)
+        budget = max(30, budget);
+        return min(budget, avail);
+    }
+
     // 루트에서 한 수 결정 ---------------------------------------------------
+    //   t1 = 내게 남은 누적시간(ms). 예산은 genMoves(nLegal 확보) 직후 budgetFor 로 산출.
     //   prevWasPass = 상대의 직전 행동이 패스였는지(= 내가 지금 패스하면 연속패스로 종료).
-    Move decide(const State& S, int budget_ms, bool prevWasPass) {
+    Move decide(const State& S, int t1, bool prevWasPass) {
         // 실보드 -> 작업보드 복사
         for (int r = 0; r < R; r++)
             for (int c = 0; c < C; c++) { num[r][c] = S.num[r][c]; owner[r][c] = S.owner[r][c]; }
@@ -464,9 +564,7 @@ struct Solver {
             for (int c = 0; c < C; c++) hash ^= cellHash(r, c, num[r][c], owner[r][c]);
 
         for (auto& k : killer) { k[0] = -1; k[1] = -1; }
-        nodes = 0; timedOut = false;
-        auto t0 = Clock::now();
-        deadline = t0 + chrono::milliseconds(max(1, budget_ms));
+        nodes = 0; timedOut = false; reachedDepth = 0;
 
         vector<Move> rootMoves;
         genMoves(rootMoves);
@@ -476,6 +574,11 @@ struct Solver {
         int nz = 0;
         for (int r = 0; r < R; r++) for (int c = 0; c < C; c++) if (num[r][c]) nz++;
         int maxDepth = min(MAXD - 1, max(1, nz));
+
+        // 예산 산출(분기게이트) 후 deadline 설정. nLegal = 루트 합법수.
+        int budget_ms = budgetFor(t1, nz, (int)rootMoves.size());
+        auto t0 = Clock::now();
+        deadline = t0 + chrono::milliseconds(max(1, budget_ms));
 
         // 시간 없는 즉답: depth1(=탐욕)만이라도 보장
         Move committed = rootMoves[0];
@@ -498,10 +601,39 @@ struct Solver {
             }
             if (timedOut) break;            // 미완료 depth는 버림
             committed = rootBest;
-            prevVal = v; haveVal = true;
+            prevVal = v; haveVal = true; reachedDepth = d;   // [PONDER] 완료 깊이 기록(디버그)
             if (Clock::now() >= deadline) break;
         }
         return committed;
+    }
+
+    // [PONDER] 상대 결정 노드(내 수 직후, 상대가 둘 차례) 탐색으로 TT 워밍 — stopFlag 로 종료까지.
+    //   핵심: 루트 해시에 ZtoMove 를 한 번 더 접어 패리티를 '다음 실제 탐색'(상대 수 직후, 내 차례)
+    //   과 정렬한다. 그러면 상대의 어떤 후보수 X 직후 포지션(내 차례)이 폰더에서 만든 자식 노드와
+    //   같은 hkey 를 갖게 되어, 다음 실제 탐색이 그 깊이를 그대로 재사용한다(예측 불필요·헛수고 없음).
+    //   to_move=1 로 두므로 negamax/eval 은 상대 관점에서 정확히 전개된다.
+    void ponderOppNode(const State& S, bool prevWasPass) {
+        for (int r = 0; r < R; r++)
+            for (int c = 0; c < C; c++) { num[r][c] = S.num[r][c]; owner[r][c] = S.owner[r][c]; }
+        myCnt = S.myCnt; oppCnt = S.oppCnt; to_move = 1;        // 상대가 둘 차례
+
+        hash = ZtoMove;                                         // 패리티 오프셋(아래 cellHash 들과 XOR)
+        for (int r = 0; r < R; r++)
+            for (int c = 0; c < C; c++) hash ^= cellHash(r, c, num[r][c], owner[r][c]);
+
+        for (auto& k : killer) { k[0] = -1; k[1] = -1; }
+        nodes = 0; timedOut = false; reachedDepth = 0;
+        deadline = Clock::now() + chrono::hours(1);             // 사실상 무한 — stopFlag 로 종료
+
+        int nz = 0;
+        for (int r = 0; r < R; r++) for (int c = 0; c < C; c++) if (num[r][c]) nz++;
+        int maxDepth = min(MAXD - 1, max(1, nz));
+        for (int d = 1; d <= maxDepth; d++) {
+            timedOut = false;
+            negamax(d, -INF, INF, 0, nullptr, nullptr, prevWasPass);  // 전 윈도우(워밍 → 엔트리 많이)
+            if (timedOut) break;                               // stopFlag 로 중단되면 종료
+            reachedDepth = d;
+        }
     }
 };
 
@@ -513,6 +645,12 @@ struct Game {
     bool first = false;
     Solver solver;
     bool oppLastWasPass = false;   // 상대 직전 수가 패스였는지 (decide의 prevWasPass로 전달)
+
+    // [PONDER] 상대 고민 시간 동안 도는 백그라운드 탐색 스레드.
+    std::thread ponderThread;
+    bool ponderEnabled = (getenv("PONDER_OFF") == nullptr);   // env PONDER_OFF 면 폰더 끔(A/B용)
+    bool ponderDebug   = (getenv("PONDER_DEBUG") != nullptr);  // env PONDER_DEBUG 면 도달깊이 stderr
+    ~Game() { stopPonder(); }
 
     void init(const vector<string>& rows) {
         for (int r = 0; r < R; r++)
@@ -527,17 +665,6 @@ struct Game {
         return n;
     }
 
-    int decideBudget(int t1) const {
-        int avail = max(1, t1 - 250);          // flush/overhead 안전마진
-        int nz = nonzeroCount();
-        // 자기보정 분할 + "남은 시간의 일정 비율" 상한으로 고갈 방지(TLE 안전).
-        int estTurns = max(4, nz / 6);          // 남은 내 턴 추정 (보수적)
-        int budget = avail / estTurns;
-        budget = min(budget, t1 / 8);           // 한 수에 잔여 시간의 1/8 초과 금지 (고갈 방지)
-        budget = max(30, min(budget, 1000));
-        return min(budget, avail);
-    }
-
     Move pick(int t1) {
         if (t1 <= 8) {                          // 시간 거의 없음: 탐욕 즉답
             vector<Move> m; solver_genGreedy(m);
@@ -546,7 +673,8 @@ struct Game {
             for (auto& x : m) if (x.key > best.key) best = x;
             return best;
         }
-        return solver.decide(S, decideBudget(t1), oppLastWasPass);
+        // 예산 산출은 solver.decide 내부(budgetFor, 분기게이트). 여기선 잔여시간 t1 만 전달.
+        return solver.decide(S, t1, oppLastWasPass);
     }
 
     // 탐욕 폴백용: 실보드에서 직접 수생성
@@ -554,6 +682,24 @@ struct Game {
         for (int r = 0; r < R; r++)
             for (int c = 0; c < C; c++) { solver.num[r][c] = S.num[r][c]; }
         solver.genMoves(out);
+    }
+
+    // ── PONDER ──────────────────────────────────────────────────────────
+    // afterMyMove = 내 수가 반영된 보드(상대가 둘 차례). 그 노드를 통째로 펼쳐 TT 워밍.
+    void startPonder(const State& afterMyMove, bool myMoveWasPass) {
+        if (!ponderEnabled) return;
+        stopPonder();                                          // 혹시 살아있으면 정리(보수적)
+        solver.stopFlag.store(false, std::memory_order_relaxed);
+        ponderThread = std::thread([this, afterMyMove, myMoveWasPass]() {
+            solver.ponderOppNode(afterMyMove, myMoveWasPass);  // 상대 결정 노드 펼치기(패리티 정렬)
+        });
+    }
+
+    void stopPonder() {
+        if (!ponderThread.joinable()) return;
+        solver.stopFlag.store(true, std::memory_order_relaxed);
+        ponderThread.join();                                   // 폰더 종료 보장 → 이후 메인이 solver 독점
+        solver.stopFlag.store(false, std::memory_order_relaxed); // 다음 실제 탐색은 정상 동작
     }
 };
 
@@ -565,6 +711,9 @@ int main() {
     Game game;
     string cmd;
     while (cin >> cmd) {
+        // [PONDER] 어떤 커맨드든 들어왔다는 건 상대 고민이 끝났다는 뜻 → 폰더 즉시 중단·join.
+        //   (cin>>cmd 가 블로킹된 동안 폰더가 상대 결정 노드를 펼쳐 TT 를 채웠다. 이후 solver 는 메인 독점.)
+        game.stopPonder();
         if (cmd == "READY") {
             string role; cin >> role;
             game.first = (role == "FIRST");
@@ -575,10 +724,14 @@ int main() {
             game.init(rows);
         } else if (cmd == "TIME") {
             int t1, t2; cin >> t1 >> t2;
-            Move mv = game.pick(t1);
+            Move mv = game.pick(t1);            // 실제 탐색 — 폰더가 채운 TT로 같은 예산에 더 깊이.
             playMove(game.S, mv, 0);            // 내 수 실보드 반영
             cout << (int)mv.r1 << " " << (int)mv.c1 << " "
                  << (int)mv.r2 << " " << (int)mv.c2 << "\n" << flush;
+            if (game.ponderDebug)
+                fprintf(stderr, "[ponder] move depth=%d nodes=%lld\n", game.solver.reachedDepth, game.solver.nodes);
+            // [PONDER] 내 수 직후(상대 차례) 보드에서 폰더 시작. 다음 입력 올 때까지 백그라운드 탐색.
+            game.startPonder(game.S, isPass(mv));
         } else if (cmd == "OPP") {
             int r1, c1, r2, c2, t; cin >> r1 >> c1 >> r2 >> c2 >> t;
             Move m = { (int8_t)r1,(int8_t)c1,(int8_t)r2,(int8_t)c2, 0 };
@@ -590,6 +743,7 @@ int main() {
             string rest; getline(cin, rest);    // 알 수 없는 커맨드 무시
         }
     }
+    game.stopPonder();                          // 종료 정리(소멸자도 보장하지만 명시적으로)
     return 0;
 }
 #endif
@@ -616,7 +770,7 @@ int main() {
 
         int mover = 0;
         for (int ply = 0; ply < 80; ply++) {
-            game.solver.decide(game.S, 10, false);  // VERIFY_MOVES가 노드마다 대조
+            game.solver.decide(game.S, 400, false);  // t1=400ms → budgetFor ~30-50ms(depth>=2 도달, deriveMoves 검증). VERIFY_MOVES가 노드마다 대조
             positions++;
             vector<Move> rm;
             for (int r = 0; r < R; r++)
