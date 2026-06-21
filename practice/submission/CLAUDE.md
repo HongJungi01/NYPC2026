@@ -33,7 +33,7 @@ g++ -O2 -std=c++17 -DBENCH_MAIN -DFORCE_FULLSCAN test.cpp -o bf.exe && ./bf.exe 
 
 ## 원칙
 
-- **검증 후 채택**: 수생성/탐색 최적화는 차분 검증(`VERIFY_MOVES`, 또는 `tools/moveGen/` 하니스)
+- **검증 후 채택**: 수생성/탐색 최적화는 차분 검증(`VERIFY_MOVES`, 또는 `tools/nodeGen/` 하니스)
   **불일치 0건**을 확인한 뒤에만 채택한다. 통과 못 하면 미채택.
-- **수생성 기반 도구**의 단일 출처: [../tools/TOOLS.md](../tools/TOOLS.md), [../tools/moveGen/](../tools/moveGen/).
+- **노드 생성(수+Δ) 기반 도구**의 단일 출처: [../tools/TOOLS.md](../tools/TOOLS.md), [../tools/nodeGen/](../tools/nodeGen/).
 - 현재 `test.cpp`는 negamax+AB+TT 탐색의 수생성을 4방향 적응형 증분(`deriveMoves`)으로 사용한다.
