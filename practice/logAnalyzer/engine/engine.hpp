@@ -1,12 +1,14 @@
 // ============================================================================
 //  engine.hpp — NYPC 2026 버섯밭 봇 탐색 엔진 스냅샷
 //
-//  출처: submission/main.cpp @ b771a9f  (Move / State / playMove / Solver 부분)
+//  출처: submission/main.cpp @ ea901be  (Move / State / playMove / Solver 부분)
 //  - submission/main.cpp 는 FROZEN(수정 금지)이고 main() I/O 루프가 박혀 있어
 //    그대로 include 할 수 없다. 또한 "로그를 만든 그 엔진"으로 채점해야 충실하므로
 //    엔진 클래스만 이 헤더로 그대로 복사한다(중복 감수).
 //  - ⚠ submission/main.cpp 의 엔진이 갱신되면 이 스냅샷도 재동기화해야 한다.
 //  - main() 과 Game 구조체(프로토콜 결선)는 제외했다. 분석 진입점은 analyze_engine.cpp.
+//  - 현재 엔진 특성: 4방향 적응형 증분 수생성(deriveMoves) + 자발적 패스 게이트(passGate)
+//    + 직전패스 비트를 TT 키에 접는 prevWasPass.  decide()는 3인자(prevWasPass 포함).
 // ============================================================================
 #pragma once
 #include <iostream>
@@ -21,6 +23,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <climits>
+#include <cstdio>
 
 using namespace std;
 using Clock = chrono::steady_clock;
@@ -92,8 +95,10 @@ struct Solver {
     // Zobrist: idx 1..9 = 버섯 숫자, 10=제거+소유0, 11=제거+소유1
     uint64_t Zcell[R][C][12];
     uint64_t ZtoMove;
+    uint64_t ZprevPass;        // "직전 수가 패스"를 TT 키에 반영 (같은 보드라도 값이 달라짐)
 
     // TT: flat open-addressing (index = hash & mask, full-key 검증).
+    // 수 간에 비우지 않음 -> 동일 포지션 재방문 시 재사용. flag 0 exact /1 lower /2 upper.
     struct TTEnt { uint64_t key; int val; int best; int16_t depth; uint8_t flag; };
     static const int TT_BITS = 19;            // 2^19 = 512K 엔트리 (~12MB, 캐시 친화)
     vector<TTEnt> tt;
@@ -108,9 +113,15 @@ struct Solver {
 
     Move rootBest;
 
-    // 평가 가중치
+    // 평가 가중치 (스케일 일치 필수: material/터미널/horizon 동일 단위)
     static const int W_MAT = 100;   // material 1칸 = 100
+    // 선턴 이니셔티브(다음 최대 점령) 가중. self-play A/B 결과 효과 없음(neutral~negative):
+    //   모든 수가 capture라 quiescence 개념이 없고 수 집합이 양쪽 공유 -> 차분 신호 부재.
+    //   기본 0(= material-only, 최강). env W_TEMPO로 재실험 가능.
     int wTempo = 0;
+    // 자발적 패스 게이트: 한 노드 합법수 <= passGate && side-to-move 비열세일 때만 PASS를 후보로.
+    //   0 = 패스 비활성(= 기존 엔진과 동일). env PASS_GATE로 설정/튜닝.
+    int passGate = 7;
 
     Solver() {
         mt19937_64 rng(0x9E3779B97F4A7C15ULL);
@@ -118,8 +129,10 @@ struct Solver {
             for (int c = 0; c < C; c++)
                 for (int k = 0; k < 12; k++) Zcell[r][c][k] = rng();
         ZtoMove = rng();
+        ZprevPass = rng();
         if (const char* e = getenv("W_TEMPO")) wTempo = atoi(e);
-        tt.assign((size_t)1 << TT_BITS, TTEnt{ 0, 0, -1, 0, 0 });
+        if (const char* e = getenv("PASS_GATE")) passGate = atoi(e);
+        tt.assign((size_t)1 << TT_BITS, TTEnt{ 0, 0, -1, 0, 0 }); // depth=0 -> 빈 슬롯은 컷오프 불가
     }
 
     inline uint64_t cellHash(int r, int c, int8_t n, int8_t o) const {
@@ -138,6 +151,7 @@ struct Solver {
     }
 
     // 현재 보드에서 side-to-move가 즉시 점령 가능한 최대 칸수 (이니셔티브 신호).
+    // genMoves의 band 로직을 리스트/정렬 없이 best만 추출.
     int scanBestCapture() const {
         int colSum[C], colCnt[C];
         int best = 0;
@@ -168,6 +182,7 @@ struct Solver {
     }
 
     // horizon(depth==0) 전용 휴리스틱: material + 선턴 이니셔티브.
+    // wTempo=0이면 leaf 스캔 생략 -> material-only와 동일 성능.
     inline int horizonEval() const {
         return wTempo ? matStm() + wTempo * scanBestCapture() : matStm();
     }
@@ -186,6 +201,8 @@ struct Solver {
                     if (v) colCnt[c]++;
                     if (colSum[c] < minAll) minAll = colSum[c];
                 }
+                // 모든 컬럼합>10 이면 제로컬럼이 없다는 뜻 -> 현재 밴드 무효이고
+                // r2를 더 키워도 각 컬럼합은 증가만 하므로 전부 무효 -> r2 루프 종료.
                 if (minAll > 10) break;
                 for (int c1 = 0; c1 < C; c1++) {
                     if (colCnt[c1] == 0) continue;        // 왼변: c1열에 버섯 필요
@@ -245,23 +262,130 @@ struct Solver {
             owner[u.cr[i]][u.cc[i]] = u.po[i];
         }
     }
-
-    // 패스 적용/되돌리기 (보드 불변, side-to-move만 토글) — 분석에서 패스 후보 평가용
+    // 패스 적용: 보드 불변, side-to-move만 토글. u.cnt=0이라 undo()의 셀 복원 루프는 무동작.
+    //   deriveMoves(parent, u, child)는 u.cnt=0 -> nrem=0 -> child=parent (수집합 불변).
     void applyPass(Undo& u) {
         u.pMy = myCnt; u.pOpp = oppCnt; u.pHash = hash; u.pTo = (int8_t)to_move; u.cnt = 0;
         hash ^= ZtoMove; to_move ^= 1;
     }
 
+    // 증분 수생성 (moveGen.cpp에서 검증한 로직: 합기준 국소 증분 + 4방향 적응형 앵커) ------
+    //  부모 유효수(parent) + 방금 적용한 수의 Undo(u, 제거칸 정보)로 자식 유효수(out)를 재계산.
+    //  보드(num)는 이미 자식 상태(apply 후)여야 한다. 유효수 = num 레이어만의 함수.
+    //   생존수 = parent 중 제거칸 미포함(내부 불변) -> 키 그대로.  신생수 = 제거칸 포함 && 지금 유효.
+    void deriveMoves(const vector<Move>& parent, const Undo& u, vector<Move>& out) {
+        out.clear();
+        // 제거된 '버섯' 칸(pn!=0)만 수집 + bbox.
+        int dr[R * C], dc[R * C], nrem = 0;
+        int dRmin = R, dRmax = -1, dCmin = C, dCmax = -1;
+        for (int i = 0; i < u.cnt; i++)
+            if (u.pn[i] != 0) {
+                int r = u.cr[i], c = u.cc[i];
+                dr[nrem] = r; dc[nrem] = c; nrem++;
+                if (r < dRmin) dRmin = r;
+                if (r > dRmax) dRmax = r;
+                if (c < dCmin) dCmin = c;
+                if (c > dCmax) dCmax = c;
+            }
+        if (nrem == 0) { out = parent; return; }   // 숫자 변화 없음(소유권만) -> 수 집합 불변
+
+        // 1) 생존수: parent 중 제거칸을 하나도 포함하지 않는 것. key(즉시점령수) 불변 -> 그대로 복사.
+        for (const Move& p : parent) {
+            bool hit = false;
+            if (!(p.r1 > dRmax || p.r2 < dRmin || p.c1 > dCmax || p.c2 < dCmin))
+                for (int k = 0; k < nrem; k++)
+                    if (dr[k] >= p.r1 && dr[k] <= p.r2 && dc[k] >= p.c1 && dc[k] <= p.c2) { hit = true; break; }
+            if (!hit) out.push_back(p);
+        }
+
+        // 2) 신생수: 제거칸 포함 && 지금 유효. 제거박스 가까운 모서리에 앵커(4방향) + remSum>0 게이트.
+        bool rowFlip = (R - dRmin) < (dRmax + 1);   // true -> 아래쪽 앵커(위로 누적)
+        bool colFlip = (C - dCmin) < (dCmax + 1);   // true -> 오른쪽 앵커(왼쪽으로 확장)
+        int colSum[C], colCnt[C], remCol[C];
+
+        auto hscan = [&](int br1, int br2) {        // 한 밴드의 가로 스캔 (colFlip로 좌/우 앵커)
+            if (!colFlip) {
+                for (int a = 0; a <= dCmax; a++) {
+                    if (colCnt[a] == 0) continue;
+                    int s = 0, cnt = 0, rs = 0; bool tp = false, bp = false;
+                    for (int b = a; b < C; b++) {
+                        s += colSum[b]; cnt += colCnt[b]; rs += remCol[b];
+                        if (num[br1][b]) tp = true;
+                        if (num[br2][b]) bp = true;
+                        if (s > 10) break;
+                        if (s == 10 && colCnt[b] && tp && bp && rs > 0)
+                            out.push_back({ (int8_t)br1,(int8_t)a,(int8_t)br2,(int8_t)b, cnt });
+                    }
+                }
+            } else {
+                for (int b = C - 1; b >= dCmin; b--) {
+                    if (colCnt[b] == 0) continue;
+                    int s = 0, cnt = 0, rs = 0; bool tp = false, bp = false;
+                    for (int a = b; a >= 0; a--) {
+                        s += colSum[a]; cnt += colCnt[a]; rs += remCol[a];
+                        if (num[br1][a]) tp = true;
+                        if (num[br2][a]) bp = true;
+                        if (s > 10) break;
+                        if (s == 10 && colCnt[a] && tp && bp && rs > 0)
+                            out.push_back({ (int8_t)br1,(int8_t)a,(int8_t)br2,(int8_t)b, cnt });
+                    }
+                }
+            }
+        };
+
+        if (!rowFlip) {                              // 위쪽 앵커: br1 0..dRmax, 아래로 누적
+            for (int br1 = 0; br1 <= dRmax; br1++) {
+                for (int c = 0; c < C; c++) { colSum[c] = 0; colCnt[c] = 0; remCol[c] = 0; }
+                for (int br2 = br1; br2 < R; br2++) {
+                    for (int c = 0; c < C; c++) { int v = num[br2][c]; colSum[c] += v; if (v) colCnt[c]++; }
+                    for (int k = 0; k < nrem; k++) if (dr[k] == br2) remCol[dc[k]]++;
+                    if (br2 < dRmin) continue;
+                    hscan(br1, br2);
+                }
+            }
+        } else {                                     // 아래쪽 앵커: br2 R-1..dRmin, 위로 누적
+            for (int br2 = R - 1; br2 >= dRmin; br2--) {
+                for (int c = 0; c < C; c++) { colSum[c] = 0; colCnt[c] = 0; remCol[c] = 0; }
+                for (int br1 = br2; br1 >= 0; br1--) {
+                    for (int c = 0; c < C; c++) { int v = num[br1][c]; colSum[c] += v; if (v) colCnt[c]++; }
+                    for (int k = 0; k < nrem; k++) if (dr[k] == br1) remCol[dc[k]]++;
+                    if (br1 > dRmax) continue;
+                    hscan(br1, br2);
+                }
+            }
+        }
+    }
+
+#ifdef VERIFY_MOVES
+    // 디버그: 증분 결과(got)를 전체스캔(genMoves)과 집합 비교. 불일치 시 abort.
+    void verifyMoves(const vector<Move>& got) {
+        vector<Move> ref; genMoves(ref);
+        vector<int> a, b;
+        for (auto& m : got) a.push_back(encMove(m));
+        for (auto& m : ref) b.push_back(encMove(m));
+        sort(a.begin(), a.end()); sort(b.begin(), b.end());
+        if (a != b) {
+            fprintf(stderr, "[VERIFY_MOVES] MISMATCH derived=%zu ref=%zu\n", got.size(), ref.size());
+            abort();
+        }
+    }
+#endif
+
     // Negamax + AB + TT ---------------------------------------------------
-    int negamax(int depth, int alpha, int beta, int ply) {
+    //   parentList==nullptr -> 루트: 전체스캔(genMoves). 그 외 -> 부모목록+적용수로 증분(deriveMoves).
+    int negamax(int depth, int alpha, int beta, int ply,
+                const vector<Move>* parentList, const Undo* appliedUndo, bool prevWasPass) {
         if (time_up()) return matStm();
         if (depth == 0) return horizonEval();
 
         nodes++;
         const int origAlpha = alpha;
+        // 보드 hash는 그대로 두고, TT 키에만 prevWasPass 비트를 접어 넣는다(같은 보드/턴이라도
+        // 직전 패스 여부로 종료 가능성이 달라 값이 다르므로 분리 필요).
+        const uint64_t hkey = prevWasPass ? (hash ^ ZprevPass) : hash;
         int ttMove = -1;
-        TTEnt& slot = tt[hash & ttMask];
-        if (slot.key == hash) {
+        TTEnt& slot = tt[hkey & ttMask];
+        if (slot.key == hkey) {
             if (slot.depth >= depth) {
                 if (slot.flag == 0) return slot.val;
                 if (slot.flag == 1 && slot.val >= beta)  return slot.val;
@@ -271,17 +395,32 @@ struct Solver {
         }
 
         vector<Move>& buf = mv[ply];
-        genMoves(buf);
+#ifdef FORCE_FULLSCAN
+        (void)parentList; (void)appliedUndo; genMoves(buf);   // 벤치 기준선: 매 노드 전체스캔
+#else
+        if (parentList == nullptr) genMoves(buf);             // 루트: 전체스캔
+        else                       deriveMoves(*parentList, *appliedUndo, buf);  // 그 외: 증분
+#endif
+#ifdef VERIFY_MOVES
+        verifyMoves(buf);
+#endif
         if (buf.empty()) return matStm();     // 양쪽 모두 둘 수 없음 = 종료 (정확)
 
-        // 무브 오더링: 즉시 점령수 + TT/killer 보너스
+        // 무브 오더링: m.key(불변 유지) + TT/killer 보너스를 비교 시점에만 가산.
+        // (m.key를 직접 더하면 자식 deriveMoves로 survivor 복사될 때 키가 오염됨 -> 정렬키만 즉석 계산)
         int k0 = killer[ply][0], k1 = killer[ply][1];
-        for (Move& m : buf) {
+        auto orderKey = [&](const Move& m) -> int {
             int e = encMove(m);
-            if (e == ttMove) m.key += 1000000;
-            else if (e == k0 || e == k1) m.key += 5000;
-        }
-        sort(buf.begin(), buf.end(), [](const Move& a, const Move& b) { return a.key > b.key; });
+            if (e == ttMove) return m.key + 1000000;
+            if (e == k0 || e == k1) return m.key + 5000;
+            return m.key;
+        };
+        sort(buf.begin(), buf.end(),
+             [&](const Move& a, const Move& b) {
+                 int ka = orderKey(a), kb = orderKey(b);
+                 if (ka != kb) return ka > kb;
+                 return encMove(a) < encMove(b);   // 동률 -> 생성순서 무관 결정적 타이브레이크
+             });
 
         int best = -INF, bestMove = -1;
         for (size_t i = 0; i < buf.size(); i++) {
@@ -289,11 +428,11 @@ struct Solver {
             Undo u; apply(m, u);
             int v;
             if (i == 0) {
-                v = -negamax(depth - 1, -beta, -alpha, ply + 1);
+                v = -negamax(depth - 1, -beta, -alpha, ply + 1, &buf, &u, false);
             } else {
-                v = -negamax(depth - 1, -alpha - 1, -alpha, ply + 1); // PVS null window
+                v = -negamax(depth - 1, -alpha - 1, -alpha, ply + 1, &buf, &u, false); // PVS null window
                 if (v > alpha && v < beta)
-                    v = -negamax(depth - 1, -beta, -alpha, ply + 1);
+                    v = -negamax(depth - 1, -beta, -alpha, ply + 1, &buf, &u, false);
             }
             undo(u);
             if (timedOut) return best > -INF ? best : matStm();
@@ -310,9 +449,30 @@ struct Solver {
             }
         }
 
+        // 자발적 패스 후보: 게이트(좁은 포지션 && 비열세) 충족 + 컷오프 전일 때만, 마지막에 평가.
+        //   실수로 이미 alpha가 높아져 대부분 컷 -> 비용 작음. 동률은 실수 우선(> 만 갱신)이라 무용 패스 회피.
+        if (passGate > 0 && (int)buf.size() <= passGate && matStm() >= 0
+            && alpha < beta && !timedOut) {
+            int v;
+            if (prevWasPass) {
+                v = matStm();                                    // 연속 패스 -> 종료(내 관점, 정확)
+            } else {
+                Undo u; applyPass(u);
+                v = -negamax(depth - 1, -beta, -alpha, ply + 1, &buf, &u, true);
+                undo(u);
+            }
+            if (timedOut) return best > -INF ? best : matStm();
+            if (v > best) {
+                best = v; bestMove = encMove(PASS_MOVE);
+                if (ply == 0) rootBest = PASS_MOVE;
+            }
+            if (v > alpha) alpha = v;
+        }
+
         uint8_t flag = (best <= origAlpha) ? 2 : (best >= beta ? 1 : 0);
-        if (slot.key != hash || depth >= slot.depth)
-            slot = TTEnt{ hash, best, bestMove, (int16_t)depth, flag };
+        // depth-preferred 교체: 같은 포지션이 아니거나 더 깊을 때만 덮어씀.
+        if (slot.key != hkey || depth >= slot.depth)
+            slot = TTEnt{ hkey, best, bestMove, (int16_t)depth, flag };
         return best;
     }
 
@@ -326,7 +486,10 @@ struct Solver {
     }
 
     // 루트에서 한 수 결정 ---------------------------------------------------
-    Move decide(const State& S, int budget_ms) {
+    //   prevWasPass = 상대의 직전 행동이 패스였는지(= 내가 지금 패스하면 연속패스로 종료).
+    //   lastDepth(옵션) != nullptr 이면 완료한 마지막 deepening 깊이를 기록(분석용).
+    Move decide(const State& S, int budget_ms, bool prevWasPass, int* lastDepth = nullptr) {
+        // 실보드 -> 작업보드 복사
         for (int r = 0; r < R; r++)
             for (int c = 0; c < C; c++) { num[r][c] = S.num[r][c]; owner[r][c] = S.owner[r][c]; }
         myCnt = S.myCnt; oppCnt = S.oppCnt; to_move = 0;
@@ -337,6 +500,7 @@ struct Solver {
 
         for (auto& k : killer) { k[0] = -1; k[1] = -1; }
         nodes = 0; timedOut = false;
+        if (lastDepth) *lastDepth = 0;
         auto t0 = Clock::now();
         deadline = t0 + chrono::milliseconds(max(1, budget_ms));
 
@@ -344,30 +508,34 @@ struct Solver {
         genMoves(rootMoves);
         if (rootMoves.empty()) return PASS_MOVE;   // 둘 수 없음 -> 패스
 
+        // 남은 버섯 수로 최대 깊이 상한
         int nz = 0;
         for (int r = 0; r < R; r++) for (int c = 0; c < C; c++) if (num[r][c]) nz++;
         int maxDepth = min(MAXD - 1, max(1, nz));
 
+        // 시간 없는 즉답: depth1(=탐욕)만이라도 보장
         Move committed = rootMoves[0];
         for (const Move& m : rootMoves) if (m.key > committed.key) committed = m;
 
         int prevVal = 0; bool haveVal = false;
         for (int d = 1; d <= maxDepth; d++) {
+            // aspiration: 직전 값 주변 좁은 창으로 시작, 빗나가면 넓혀서 재탐색
             int a = -INF, b = INF;
             if (haveVal && d >= 3) { a = prevVal - 3 * W_MAT; b = prevVal + 3 * W_MAT; }
             int v = 0;
             for (;;) {
                 timedOut = false;
                 rootBest = committed;
-                v = negamax(d, a, b, 0);
+                v = negamax(d, a, b, 0, nullptr, nullptr, prevWasPass);   // 루트: 전체스캔으로 시작
                 if (timedOut) break;
-                if (v <= a && a > -INF) { a = -INF; continue; }
-                if (v >= b && b <  INF) { b =  INF; continue; }
+                if (v <= a && a > -INF) { a = -INF; continue; }   // fail-low -> 넓힘
+                if (v >= b && b <  INF) { b =  INF; continue; }   // fail-high -> 넓힘
                 break;
             }
-            if (timedOut) break;
+            if (timedOut) break;            // 미완료 depth는 버림
             committed = rootBest;
             prevVal = v; haveVal = true;
+            if (lastDepth) *lastDepth = d;  // 완료한 깊이 기록
             if (Clock::now() >= deadline) break;
         }
         return committed;

@@ -12,6 +12,7 @@
 //    PLAYED r1 c1 r2 c2        # 채점할 실제 둔 수 (패스 = -1 -1 -1 -1)
 //    MAXDEPTH D                # 루트 반복 채점 깊이 상한
 //    CAPMS ms                  # 포지션당 시간 상한(루트 deepening) — 초과 시 직전 완료 depth 사용
+//    PREVPASS 0|1              # 직전(상대) 행동이 패스였는지 (내가 지금 패스하면 연속패스 종료)
 //    BUDGETS m1 m2 ...         # (선택) decide() 시간예산 스윕. 없으면 키워드만.
 //
 //  ※ side-to-move 는 항상 player0 으로 정규화돼 들어온다(상대 턴 채점은 Python이 스왑).
@@ -52,6 +53,8 @@ int main() {
     cin >> kw; cin >> kw; int capMs = atoi(kw.c_str());
     // --- INCLUDEPASS ---  (1이면 합법수 있어도 PASS를 후보에 포함; 기본 0)
     cin >> kw; cin >> kw; int includePass = atoi(kw.c_str());
+    // --- PREVPASS ---  (직전 상대 행동이 패스였는지: 내 패스가 연속패스 종료가 되는지)
+    cin >> kw; cin >> kw; bool prevWasPass = (atoi(kw.c_str()) != 0);
     // --- BUDGETS ---
     cin >> kw; // "BUDGETS"
     vector<int> budgets;
@@ -74,13 +77,15 @@ int main() {
     st.myCnt = myCnt; st.oppCnt = oppCnt;
     solver.primeFromBoard();
 
-    // 후보수: 합법수 전부. PASS 는 (강제 패스 / 실제로 패스를 둠 / includePass) 일 때만 포함.
-    //   ⚠ 탐색 내부 genMoves 는 PASS 를 만들지 않으므로(상대는 트리에서 패스 불가),
-    //     루트에 PASS 를 넣으면 그 가치가 과대평가된다 → 기본은 제외(엔진 실제 선택지로 채점).
+    // 후보수: 합법수 전부 + (조건부) PASS.
+    //   현재 엔진은 negamax 매 노드에서 자발적 패스 게이트(buf<=passGate && matStm()>=0)로
+    //   PASS 를 후보에 넣는다. 루트 전수채점도 같은 게이트를 따라야 충실하다.
+    //   추가로: 실제로 PASS 를 둔 수(playedIsPass) / 합법수 0 / --with-pass(includePass) 면 포함.
     vector<Move> roots; solver.genMoves(roots);
     int nLegal = (int)roots.size();
     bool playedIsPass = (pr1 < 0);
-    if (includePass || playedIsPass || nLegal == 0) roots.push_back(PASS_MOVE);
+    bool gatePass = (solver.passGate > 0 && nLegal <= solver.passGate && (myCnt - oppCnt) >= 0);
+    if (includePass || playedIsPass || nLegal == 0 || gatePass) roots.push_back(PASS_MOVE);
 
     // 남은 버섯으로 깊이 상한 (decide 와 동일 정신)
     int nz = 0;
@@ -102,8 +107,14 @@ int main() {
         for (const Move& m : roots) {
             int v;
             Solver::Undo u;
-            if (isPass(m)) { solver.applyPass(u); v = -solver.negamax(d - 1, -INF, INF, 1); solver.undo(u); }
-            else           { solver.apply(m, u);  v = -solver.negamax(d - 1, -INF, INF, 1); solver.undo(u); }
+            // decide()의 루트 로직을 가지치기 없이 재현(전 윈도우로 정확한 per-move eval).
+            //   실수(m): 자식 prevWasPass=false.  PASS: 직전도 패스면 즉시 종료(=matStm), 아니면 재귀(자식 prevWasPass=true).
+            if (isPass(m)) {
+                if (prevWasPass) { v = solver.matStm(); }   // 연속 패스 -> 종료, 내 관점 material
+                else { solver.applyPass(u); v = -solver.negamax(d - 1, -INF, INF, 1, nullptr, nullptr, true); solver.undo(u); }
+            } else {
+                solver.apply(m, u); v = -solver.negamax(d - 1, -INF, INF, 1, nullptr, nullptr, false); solver.undo(u);
+            }
             if (solver.timedOut) { incomplete = true; break; }
             evals.push_back({ m, v });
         }
@@ -143,15 +154,17 @@ int main() {
     int convDepth = -1;
     for (auto& t : trace) if (t.playedFound && t.playedEval == t.bestEval) { convDepth = t.depth; break; }
 
-    // budgetSweep: decide() 재현 + 선택수의 cellLoss(가장 깊은 depth 기준).
-    //   "예산 ms 로 두면 엔진이 무슨 수를 두고, 그게 최선 대비 몇 칸 손해인가"를 본다.
-    struct Sweep { int ms; Move m; double cl; bool clFound; };
+    // budgetSweep: decide() 재현 + 선택수의 cellLoss(가장 깊은 depth 기준) + 그 예산에서 완료한 깊이.
+    //   "예산 ms 로 두면 엔진이 무슨 수를 두고(깊이 몇까지 가서), 그게 최선 대비 몇 칸 손해인가"를 본다.
+    //   reachedDepth 는 머신속도 의존(아래 cellLoss/convergenceDepth 가 1순위 지표).
+    struct Sweep { int ms; Move m; double cl; bool clFound; int depth; };
     vector<Sweep> sweep;
     for (int ms : budgets) {
-        Move mv = solver.decide(st, ms);
+        int reached = 0;
+        Move mv = solver.decide(st, ms, prevWasPass, &reached);
         double cl = 0.0; bool clf = false;
         for (auto& e : finalEvals) if (sameMove(e.m, mv)) { cl = (double)(bestEval - e.eval) / Solver::W_MAT; clf = true; break; }
-        sweep.push_back({ ms, mv, cl, clf });
+        sweep.push_back({ ms, mv, cl, clf, reached });
     }
 
     // ---- JSON 출력 ----
@@ -185,7 +198,8 @@ int main() {
     for (size_t i = 0; i < sweep.size(); i++) {
         if (i) o << ",";
         o << "{\"ms\":" << sweep[i].ms << ",\"move\":" << moveJson(sweep[i].m)
-          << ",\"cellLoss\":" << (sweep[i].clFound ? to_string(sweep[i].cl) : string("null")) << "}";
+          << ",\"cellLoss\":" << (sweep[i].clFound ? to_string(sweep[i].cl) : string("null"))
+          << ",\"depth\":" << sweep[i].depth << "}";
     }
     o << "]";
     o << "}";
