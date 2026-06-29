@@ -585,13 +585,17 @@ static long long side_income(const SimState &st, Side s) {
 // the day-200 horizon fall back to HQ-HP (Rule 4), which `hq_hp` diff encodes.
 static double eval_state(const SimState &st, const GameMap &M, Side me, int turn) {
   Side opp = opposite(me);
-  const Building *myhq = building_at(st, hq_region_of(M, me));
-  const Building *ophq = building_at(st, hq_region_of(M, opp));
+  int my_hq_r = hq_region_of(M, me), op_hq_r = hq_region_of(M, opp);
+  const Building *myhq = building_at(st, my_hq_r);
+  const Building *ophq = building_at(st, op_hq_r);
   if (!myhq) return -1e9 + turn;  // delaying our loss is less bad
   if (!ophq) return 1e9 - turn;   // winning sooner is better
 
   double sc = 0;
   sc += 60.0 * (myhq->hp - ophq->hp);
+  // Damage already dealt to each HQ (a half-broken enemy HQ is real progress
+  // even at full-horizon draws where the hp *diff* is otherwise zero).
+  sc += 15.0 * ((ophq->max_hp_now() - ophq->hp) - (myhq->max_hp_now() - myhq->hp));
 
   std::vector<int> mine(M.N, 0), enemy(M.N, 0);
   double myhp = 0, ophp = 0;
@@ -602,6 +606,13 @@ static double eval_state(const SimState &st, const GameMap &M, Side me, int turn
   }
   sc += 4.0 * (myhp - ophp);
   sc += 1.0 * (side_income(st, me) - side_income(st, opp));
+
+  // Closing pressure: a force on the enemy HQ that BEATS its garrison+turret is
+  // a winning siege — reward it so deep self-play vs a mirror still has a
+  // gradient toward finishing (instead of predicting a passive 30-30 draw).
+  int my_net = mine[op_hq_r] - enemy[op_hq_r] - ophq->turret();
+  int op_net = enemy[my_hq_r] - mine[my_hq_r] - myhq->turret();
+  sc += 22.0 * (std::max(0, my_net) - std::max(0, op_net));
 
   int edge = 0;
   for (int r = 0; r < M.N; ++r) {
@@ -782,7 +793,7 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
       rally = b->region;
     }
   }
-  for (const Building *b : my_b) { // (A) defense
+  for (const Building *b : my_b) { // (A) defense (enemies already on the building)
     int r = b->region, need = enemy[r], have = mine[r];
     if (need <= 0) continue;
     while (have < need + 1) {
@@ -869,12 +880,43 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
 // them = mirror), score the terminal state, and keep the candidate with the best
 // eval. We then emit that candidate's day-0 commands. Script-based lookahead
 // (Justesen): search over a handful of scripts, not raw actions.
+// Infer the opponent's posture from observed state so the lookahead rolls them
+// forward realistically (not a fixed mirror). Full information makes this cheap:
+// army pushing into our half -> RUSH; many bases -> EXPAND; small & home -> TURTLE.
+// READY but DISABLED: vs the balanced-ish §4a baseline it's a wash (shuffles a few
+// seeds), and its real payoff is vs diverse opponents we can't benchmark here yet.
+// Enable by setting `mirror = infer_opp_policy(...)` once a varied sparring set
+// validates it.
+[[maybe_unused]] static Policy infer_opp_policy(const SimState &S,
+                                                const GameMap &M, const Paths &P) {
+  Side opp = opposite(M.my_side);
+  long long lane = reachable(P, M.my_hq, M.opp_hq) ? P.dist[M.my_hq][M.opp_hq] : PINF;
+  int opp_bases = 0, opp_army = 0, opp_in_my_half = 0;
+  for (const auto &b : S.buildings)
+    if (b.side == opp && b.type == BType::BASE) opp_bases++;
+  for (const auto &w : S.warriors) {
+    if (w.id.side != opp || w.hp <= 0) continue;
+    opp_army++;
+    if (lane < PINF && reachable(P, w.region, M.my_hq) &&
+        P.dist[w.region][M.my_hq] < lane / 2)
+      opp_in_my_half++;
+  }
+  if (opp_in_my_half >= 4) return presets::RUSH;
+  if (opp_bases >= 3) return presets::EXPAND;
+  if (opp_bases <= 1 && opp_army <= 6) return presets::TURTLE;
+  return presets::BALANCED;
+}
+
 static Cmds hybrid_decide(const SimState &S0, const GameMap &M, const Paths &P,
                           const Strat &ST, int turn) {
   static const Policy CANDS[] = {presets::BALANCED, presets::TURTLE,
                                  presets::RUSH, presets::EXPAND};
-  const Policy mirror = presets::BALANCED;
-  const int K = 16;
+  const Policy mirror = presets::BALANCED; // infer_opp_policy(S0,M,P): see note
+  // Win-condition lookahead: roll forward toward day 200, not a 16-day snapshot.
+  // Late game K = days left -> the eval IS the exact tiebreak/HQ-kill terminal;
+  // mid game it's capped to fit the 100ms budget (cands x K sim-days).
+  constexpr int K_MAX = 16;
+  int K = std::max(1, std::min(MAX_TURN - turn, K_MAX));
   Side me = M.my_side, opp = opposite(me);
 
   double best = -1e18;
@@ -1033,6 +1075,11 @@ static void read_turn_result(SimState &S, const GameMap &M, const Cmds &mine) {
   }
   // MOVE
   {
+    // Track opponent move costs to sharpen the opp-gold estimate: charge once at
+    // the START of each contiguous move-run (was-stationary -> moving), free if
+    // the step lands on their own building.
+    static std::set<int> opp_prev_moved;
+    std::set<int> opp_cur_moved;
     auto t = tokens(readln());
     int n = std::stoi(t.at(1));
     for (int i = 0; i < n; ++i) {
@@ -1040,12 +1087,20 @@ static void read_turn_result(SimState &S, const GameMap &M, const Cmds &mine) {
       Side s = parse_side_char(r.at(0)[0]);
       int suffix = std::stoi(r.at(0).substr(1));
       int region = std::stoi(r.at(1));
+      if (s != M.my_side) {
+        opp_cur_moved.insert(suffix);
+        if (!opp_prev_moved.count(suffix)) {
+          const Building *b = building_at(S, region);
+          S.gold[(int)s] -= (b && b->side == s) ? 0 : MOVE_COST;
+        }
+      }
       if (Warrior *w = warrior_by_suffix(S, s, suffix)) {
         w->region = region;
         if (w->state == WState::MOVING && w->region == w->target)
           w->state = WState::STATIONARY;
       }
     }
+    opp_prev_moved = opp_cur_moved;
   }
   // DAMAGE
   {
