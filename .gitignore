@@ -7,3 +7,7 @@
 # macOS 압축 해제 부산물 (zip 으로 받은 툴 폴더에 딸려옴 — 추적하지 않음)
 __MACOSX/
 .DS_Store
+
+# Claude Code 로컬/머신별 상태 — OneDrive로 동기화하므로 git에는 넣지 않음
+.claude/settings.local.json
+.claude/memory/
