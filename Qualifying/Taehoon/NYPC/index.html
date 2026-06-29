@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>NEXT NATION</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="game.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand-block">
+          <div class="brand">NEXT NATION</div>
+          <div id="turnStatus" class="turn-status">1일차 명령 단계</div>
+        </div>
+
+        <div class="topbar-controls">
+          <div class="side-switch" role="tablist" aria-label="명령 진영">
+            <button id="sideAButton" class="side-tab is-active" type="button" data-side="A">A 진영</button>
+            <button id="sideBButton" class="side-tab" type="button" data-side="B">B 진영</button>
+          </div>
+          <button id="resolveButton" class="primary-action" type="button">하루 진행</button>
+          <input id="mapSizeInput" class="map-size-input" type="number" min="51" max="109" step="2" value="51" aria-label="전장 크기">
+          <button id="newGameButton" class="secondary-action" type="button">새 게임</button>
+        </div>
+      </header>
+
+      <main class="game-grid">
+        <section class="battle-panel" aria-label="전장">
+          <svg id="battlefield" class="battlefield" role="img" aria-label="NEXT NATION 전장"></svg>
+        </section>
+
+        <aside class="control-panel" aria-label="명령 패널">
+          <section class="score-row">
+            <div id="scoreA" class="score-box side-a"></div>
+            <div id="scoreB" class="score-box side-b"></div>
+          </section>
+
+          <section id="selectedZonePanel" class="panel-section"></section>
+          <section id="commandPanel" class="panel-section"></section>
+          <section id="queuePanel" class="panel-section"></section>
+        </aside>
+      </main>
+
+      <section class="event-log" aria-label="전투 기록">
+        <div class="log-title">기록</div>
+        <ol id="eventLog" class="log-list"></ol>
+      </section>
+    </div>
+  </body>
+</html>
