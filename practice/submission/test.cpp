@@ -150,6 +150,10 @@ struct Solver {
     //   모든 수가 capture라 quiescence 개념이 없고 수 집합이 양쪽 공유 -> 차분 신호 부재.
     //   기본 0(= material-only, 최강). env W_TEMPO로 재실험 가능.
     int wTempo = 0;
+    // 승리-지향 구조항(simplification): 리드를 진행도(=비가역 제거 칸수)로 변조해, 남은 버섯(스윙
+    //   탄약)이 적을수록 리드를 더 신뢰. horizon 리프에만 가산(matStm 정확앵커 불변), 연속·유계·
+    //   반대칭(negamax 일관). 기본 0(= 현재 엔진과 동치). env W_SIMPLIFY로 A/B 튜닝.
+    int wSimplify = 0;
     // 자발적 패스 게이트: 한 노드 합법수 <= passGate && side-to-move 비열세일 때만 PASS를 후보로.
     //   0 = 패스 비활성(= 기존 엔진과 동일). env PASS_GATE로 설정/튜닝.
     int passGate = 7;
@@ -175,6 +179,7 @@ struct Solver {
         ZtoMove = rng();
         ZprevPass = rng();
         if (const char* e = getenv("W_TEMPO")) wTempo = atoi(e);
+        if (const char* e = getenv("W_SIMPLIFY")) wSimplify = atoi(e);
         if (const char* e = getenv("PASS_GATE")) passGate = atoi(e);
         if (const char* e = getenv("TURN_DIV"))   turnDiv    = max(1, atoi(e));
         if (const char* e = getenv("MOVE_CAP"))   moveCapMs  = max(1, atoi(e));
@@ -234,10 +239,18 @@ struct Solver {
         return best;
     }
 
-    // horizon(depth==0) 전용 휴리스틱: material + 선턴 이니셔티브.
-    // wTempo=0이면 leaf 스캔 생략 -> material-only와 동일 성능.
+    // horizon(depth==0) 전용 휴리스틱: material + (선턴 이니셔티브) + (승리-지향 구조항).
+    // 둘 다 기본 off(wTempo=0, wSimplify=0)이면 leaf 스캔/가산 생략 -> material-only와 동일.
+    //   구조항: diffStm(side-to-move 리드) * cleared(진행도) / (R*C). 연속(diff=0→0)·유계
+    //   (|항|<=wSimplify*|diff|, material 비압도)·반대칭(stm 뒤집으면 부호반전 → negamax 일관).
     inline int horizonEval() const {
-        return wTempo ? matStm() + wTempo * scanBestCapture() : matStm();
+        int e = wTempo ? matStm() + wTempo * scanBestCapture() : matStm();
+        if (wSimplify) {
+            int diffStm = (to_move == 0) ? (myCnt - oppCnt) : (oppCnt - myCnt);
+            int cleared = myCnt + oppCnt;            // 비가역 진행도 = R*C - 남은 버섯수
+            e += (wSimplify * diffStm * cleared) / (R * C);
+        }
+        return e;
     }
 
     // 유효 직사각형 전부 생성 (현재 num 레이어 기준)
@@ -479,6 +492,21 @@ struct Solver {
              });
 
         int best = -INF, bestMove = -1;
+
+        // [수정: 상대가 패스했을 때 연속 패스로 즉시 종료하는 옵션을 최우선 확보]
+        if (prevWasPass) {
+            best = matStm();
+            bestMove = encMove(PASS_MOVE);
+            if (ply == 0) rootBest = PASS_MOVE;
+            if (best > alpha) alpha = best;
+            if (alpha >= beta) {
+                uint8_t flag = (best <= origAlpha) ? 2 : (best >= beta ? 1 : 0);
+                if (slot.key != hkey || depth >= slot.depth)
+                    slot = TTEnt{ hkey, best, bestMove, (int16_t)depth, flag };
+                return best;
+            }
+        }
+
         for (size_t i = 0; i < buf.size(); i++) {
             const Move m = buf[i];
             Undo u; apply(m, u);
@@ -506,17 +534,14 @@ struct Solver {
         }
 
         // 자발적 패스 후보: 게이트(좁은 포지션 && 비열세) 충족 + 컷오프 전일 때만, 마지막에 평가.
-        //   실수로 이미 alpha가 높아져 대부분 컷 -> 비용 작음. 동률은 실수 우선(> 만 갱신)이라 무용 패스 회피.
-        if (passGate > 0 && (int)buf.size() <= passGate && matStm() >= 0
+        // (상대가 직전에 패스한 경우는 위에서 이미 최우선으로 평가했으므로 여기서는 !prevWasPass 일 때만 탐색합니다.)
+        if (!prevWasPass && passGate > 0 && (int)buf.size() <= passGate && matStm() >= 0
             && alpha < beta && !timedOut) {
             int v;
-            if (prevWasPass) {
-                v = matStm();                                    // 연속 패스 -> 종료(내 관점, 정확)
-            } else {
-                Undo u; applyPass(u);
-                v = -negamax(depth - 1, -beta, -alpha, ply + 1, &buf, &u, true);
-                undo(u);
-            }
+            Undo u; applyPass(u);
+            v = -negamax(depth - 1, -beta, -alpha, ply + 1, &buf, &u, true);
+            undo(u);
+            
             if (timedOut) return best > -INF ? best : matStm();
             if (v > best) {
                 best = v; bestMove = encMove(PASS_MOVE);
