@@ -568,6 +568,18 @@ static int min_mass_to_take(int atk_hp, const std::vector<int> &def_hps,
   return cap + 1; // unwinnable within cap
 }
 
+// Min number of defenders (each `def_hp`), backed by our building `turret`,
+// needed to wipe an incoming attack — i.e. leave zero attacker survivors so the
+// building can't be sieged. Used by the anticipatory-defense mobilization.
+static int min_defenders_to_hold(const std::vector<int> &atk_hps, int def_hp,
+                                 int turret, int cap) {
+  for (int d = 0; d <= cap; ++d) {
+    std::vector<int> def(d, def_hp);
+    if (region_fight_survivors(atk_hps, def, turret) == 0) return d;
+  }
+  return cap + 1; // cannot hold within cap
+}
+
 // ================================ §4 evaluation ==============================
 static long long side_income(const SimState &st, Side s) {
   long long inc = 0;
@@ -670,7 +682,8 @@ static bool is_stronghold(const GameMap &M, int region) {
 // §4a manager decomposition in submission/main.cpp (Economy -> Movement ->
 // Military), reading the two-sided SimState. Produces referee-valid commands.
 static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
-                     const Strat &ST, Side side, const Policy &pol, int turn) {
+                     const Strat &ST, Side side, const Policy &pol, int turn,
+                     bool verbose = false) {
   Cmds a;
   int sv = (int)side;
   int my_hq = hq_region_of(M, side);
@@ -793,14 +806,81 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
       rally = b->region;
     }
   }
-  for (const Building *b : my_b) { // (A) defense (enemies already on the building)
-    int r = b->region, need = enemy[r], have = mine[r];
-    if (need <= 0) continue;
-    while (have < need + 1) {
-      const Warrior *w = nearest_mobile(r);
-      if (!w || !issue_move(w, r)) break;
-      have++;
+  // (A) ANTICIPATORY DEFENSE (focused on the HQ / 본진 — the enemy's usual target):
+  // predict each enemy's target = its nearest reachable building of ours, counted
+  // only if it is advancing toward us AND within an interception horizon. If a
+  // building would be out-fought (incoming > defenders + turret), meet the wave
+  // with defenders that ARRIVE IN TIME: surplus for any building, but LABORERS
+  // only to save the HQ (pulling miners for distant outposts collapses the
+  // economy). The HQ shortfall is emergency-trained below (spawns at the HQ).
+  long long lane = reachable(P, my_hq, opp_hq) ? P.dist[my_hq][opp_hq] : PINF;
+  long long horizon = (lane < PINF) ? lane / 2 : PINF;
+  bool hq_threatened = false;
+  int hq_need = 0, hq_have = 0;
+  std::vector<int> incoming(M.N, 0);
+  std::vector<long long> eta(M.N, PINF);
+  std::vector<std::vector<int>> atk_hps(M.N);
+  for (const auto &w : S.warriors) {
+    if (w.hp <= 0 || w.id.side == side) continue;
+    int tgt = -1;
+    long long bd = PINF;
+    for (const Building *b : my_b) {
+      if (!reachable(P, w.region, b->region)) continue;
+      long long d = P.dist[w.region][b->region];
+      if (d < bd) { bd = d; tgt = b->region; }
     }
+    if (tgt < 0) continue; // no reachable building of ours
+    long long d_home = reachable(P, w.region, opp_hq) ? P.dist[w.region][opp_hq] : PINF;
+    if (bd > d_home) continue; // not advancing toward us
+    incoming[tgt]++;
+    if (bd < eta[tgt]) eta[tgt] = bd;
+    atk_hps[tgt].push_back(w.hp);
+  }
+  std::vector<const Warrior *> laborers; // draftable miners (committed, not builders)
+  for (const auto &w : S.warriors)
+    if (w.id.side == side && w.hp > 0 && w.state == WState::STATIONARY &&
+        committed.count(w.id.num) && !waiting_to_build(&w)) {
+      const Building *wb = building_at(S, w.region);
+      if (wb && wb->side == side) laborers.push_back(&w);
+    }
+  auto recruit_to = [&](int r, std::vector<const Warrior *> &pool) -> bool {
+    const Warrior *best = nullptr;
+    long long bd = PINF;
+    for (const Warrior *w : pool) {
+      if (w->region == r || !reachable(P, w->region, r)) continue;
+      long long d = P.dist[w->region][r];
+      if (d <= eta[r] && d < bd) { bd = d; best = w; } // must arrive in time
+    }
+    if (!best || !issue_move(best, r)) return false;
+    pool.erase(std::remove(pool.begin(), pool.end(), best), pool.end());
+    return true;
+  };
+  std::vector<const Building *> threatened;
+  for (const Building *b : my_b)
+    if (incoming[b->region] > mine[b->region] + b->turret() &&
+        eta[b->region] <= horizon)
+      threatened.push_back(b);
+  std::sort(threatened.begin(), threatened.end(),
+            [&](const Building *x, const Building *y) {
+              bool hx = x->region == my_hq, hy = y->region == my_hq;
+              if (hx != hy) return hx;               // HQ first
+              return eta[x->region] < eta[y->region]; // then most imminent
+            });
+  for (const Building *b : threatened) {
+    int r = b->region;
+    int need = min_defenders_to_hold(atk_hps[r], my_whp, b->turret(), 64);
+    int have = mine[r];
+    int ps = 0, pl = 0;
+    while (have < need && recruit_to(r, mobile)) { have++; ps++; }   // surplus, any bldg
+    if (r == my_hq)                                                  // laborers: HQ only
+      while (have < need && recruit_to(r, laborers)) { have++; pl++; }
+    if (r == my_hq) { hq_threatened = true; hq_need = need; hq_have = have; }
+#ifdef DBG_DEF
+    if (verbose)
+      std::cerr << "T" << turn << " THREAT b=" << r << " incoming=" << incoming[r]
+                << " eta=" << eta[r] << " need=" << need << " have=" << have
+                << " pulled s/l=" << ps << "/" << pl << "\n";
+#endif
   }
   for (const Building *b : my_b) { // (B) fill labor
     int r = b->region, cur = std::min(mine[r], b->work_cap());
@@ -853,8 +933,23 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
     else issue_move(w, rally);
   }
 
-  // -------- MilitaryManager: train while staying cash-flow positive ----------
+  // -------- MilitaryManager: emergency defense first, else solvent training -----
   if (hq && HQ_LEVELS[hq->level].train_cap > 0) {
+    int cap = HQ_LEVELS[hq->level].train_cap;
+    // Emergency: HQ under predicted threat and still short after mobilization ->
+    // spawn defenders NOW (they spawn at the HQ and join today's combat). Bypass
+    // the normal army-cap / solvency gate; spend down toward the train cost.
+    if (hq_threatened && hq_have < hq_need && budget >= TRAIN_COST) {
+      int n = std::min({hq_need - hq_have, cap, (int)(budget / TRAIN_COST)});
+      if (n > 0) {
+        a.train_n = n;
+        budget -= (long long)TRAIN_COST * n;
+#ifdef DBG_DEF
+        if (verbose)
+          std::cerr << "T" << turn << " EMERGENCY_TRAIN n=" << n << "\n";
+#endif
+      }
+    }
     int total_cap = 0, army = 0;
     for (const Building *b : my_b) total_cap += b->work_cap();
     for (const auto &w : S.warriors)
@@ -863,7 +958,7 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
     bool sustainable = income_after - UPKEEP_PER_WARRIOR * (army + 1) >= 0;
     bool room = army < std::max(3, total_cap + pol.army_extra);
     long long floor = pol.train_reserve + (inflight > 0 ? BASE_BUILD_COST : 0);
-    if (sustainable && room && budget >= TRAIN_COST + floor) {
+    if (a.train_n == 0 && sustainable && room && budget >= TRAIN_COST + floor) {
       int n = std::min(HQ_LEVELS[hq->level].train_cap,
                        (int)((budget - floor) / TRAIN_COST));
       if (n > 0) { a.train_n = n; budget -= (long long)TRAIN_COST * n; }
@@ -1177,6 +1272,9 @@ int main() {
     Cmds a = gen_cmds(S, M, P, ST, M.my_side, SCRIPT_POLICY, turn);
 #else
     Cmds a = hybrid_decide(S, M, P, ST, turn);
+#endif
+#ifdef DBG_DEF
+    gen_cmds(S, M, P, ST, M.my_side, presets::BALANCED, turn, true); // real-turn threat log
 #endif
     emit_cmds(M, a);
     read_turn_result(S, M, a);
