@@ -8,6 +8,9 @@
 __MACOSX/
 .DS_Store
 
-# Claude Code 로컬/머신별 상태 — OneDrive로 동기화하므로 git에는 넣지 않음
-.claude/settings.local.json
-.claude/memory/
+# Claude Code 로컬/머신별 상태 — OneDrive로 동기화하므로 git에는 넣지 않음 (모든 깊이)
+**/.claude/settings.local.json
+**/.claude/memory/
+
+# 엔진 실시간 실행 산출물 (사람 플레이 등으로 매번 새로 생김 — 추적하지 않음)
+**/engine/_human*

@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEXT NATION — 전장 뷰어</title>
+<style>
+  /* ============================================================
+     NEXT NATION viewer — 밝은 전장 대시보드
+     ============================================================ */
+  :root{
+    --bg:#f5f7fb;
+    --panel:#ffffff;
+    --panel-2:#eef2f7;
+    --line:#d4dce8;
+    --ink:#172033;
+    --ink-dim:#667085;
+    --land:#f3eedc;
+    --land-2:#e8dfc9;
+    --gold:#c89f18;
+    --gold-fill:#fff19a;
+    --left:#f08a7f;
+    --left-strong:#d84b3f;
+    --right:#80aee5;
+    --right-strong:#2f74c7;
+    --danger:#c24135;
+    --ok:#2f9d62;
+    --shadow:0 14px 34px rgba(23,32,51,.10);
+    --mono:'SFMono-Regular',ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;
+    --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans KR',sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg);color:var(--ink);font-family:var(--sans);
+    display:grid;grid-template-columns:minmax(480px,min(58vw,calc(100vh - 126px))) minmax(520px,1fr);grid-template-rows:auto 1fr auto;
+    grid-template-areas:"head head" "board side" "time time";
+    height:100vh;overflow:hidden;
+  }
+
+  /* ---- 헤더 ---- */
+  header{
+    grid-area:head;display:flex;align-items:center;gap:18px;
+    padding:12px 20px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.94);
+    box-shadow:0 8px 24px rgba(23,32,51,.06);z-index:2;
+  }
+  .brand{display:flex;align-items:baseline;gap:10px}
+  .brand b{font-size:18px;letter-spacing:.18em;font-weight:800}
+  .brand span{font-family:var(--mono);font-size:11px;color:var(--ink-dim);letter-spacing:.1em}
+  .head-actions{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+  .file-btn,.ghost{
+    font-family:var(--mono);font-size:12px;letter-spacing:.04em;
+    background:var(--panel-2);color:var(--ink);border:1px solid var(--line);
+    padding:8px 14px;border-radius:6px;cursor:pointer;transition:.15s;
+  }
+  .file-btn:hover,.ghost:hover{border-color:var(--gold);color:#111827;background:#fff7cc}
+  input[type=file]{display:none}
+  .newgame{display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow)}
+  .ng-label{font-family:var(--mono);font-size:11px;color:var(--ink-dim);letter-spacing:.08em}
+  .radio{font-family:var(--mono);font-size:12px;color:var(--ink);display:flex;align-items:center;gap:3px;cursor:pointer}
+  .radio input{accent-color:var(--gold)}
+  #seedInput{width:120px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:5px;padding:6px 8px;font-family:var(--mono);font-size:12px}
+  #seedInput:disabled{opacity:.72;background:#f8fafc}
+  .play-new{background:var(--gold)!important;color:#1a1a1a!important;border-color:var(--gold)!important;font-weight:700}
+  .live-badge{display:none;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--danger)}
+  .live-badge.show{display:flex}
+  .live-badge i{width:8px;height:8px;border-radius:50%;background:var(--danger);animation:pulse 1.2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+  .ng-sep{width:1px;height:22px;background:var(--line)}
+  .side-select{display:flex;align-items:center;gap:6px;padding:4px;background:var(--panel-2);border:1px solid var(--line);border-radius:8px}
+  .side-select .side-option{font-family:var(--mono);font-size:12px;color:var(--ink-dim);display:flex;align-items:center;gap:4px;padding:3px 6px;border-radius:6px;cursor:pointer}
+  .side-select .side-option:has(input:checked){background:var(--panel);color:var(--ink);box-shadow:0 1px 4px rgba(23,32,51,.12)}
+  .side-select input{accent-color:var(--gold)}
+  .play-human{background:transparent!important;color:var(--gold)!important;border-color:var(--gold)!important;font-weight:700}
+  .play-human:hover{background:var(--gold)!important;color:#1a1a1a!important}
+  #cppExeSelect{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:5px;padding:6px 8px;font-family:var(--mono);font-size:12px;max-width:200px}
+  #cppExeSelect:focus{outline:none;border-color:var(--gold)}
+  /* 직접 플레이 패널 */
+  .play-panel{display:none;flex-direction:column;gap:14px;padding:20px 20px 18px;border-top:3px solid var(--gold);border-bottom:0;background:#fffbeb;box-shadow:inset 0 1px 0 rgba(255,255,255,.7);min-height:100%;height:100%}
+  .play-panel.show{display:flex}
+  .pp-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;font-family:var(--mono)}
+  .pp-head #ppTurn{display:block;color:#9f7600;font-weight:900;font-size:24px;line-height:1.12}
+  .pp-side{padding:5px 8px;border:1px solid #efd472;border-radius:999px;background:#fff8d6;font-size:12px;color:#7a5a00;font-weight:800;white-space:nowrap}
+  .pp-hint{font-size:12px;color:#76622b;line-height:1.55;background:#fff8d6;border:1px solid #f0dea1;border-radius:7px;padding:9px 10px}
+  .pp-train{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:13px}
+  .pp-train input{background:#fff;color:var(--ink);border:1px solid #e3c767;border-radius:6px;padding:7px 8px;font-family:var(--mono);font-weight:800}
+  .pp-train-cap{color:#7a6a3d;font-size:12px}
+  .pp-queue{flex:1;min-height:180px;max-height:none;overflow:auto;background:#fff;border:1px solid #edd88a;border-radius:8px;padding:10px 12px;font-family:var(--mono);font-size:13px;line-height:1.85}
+  .pp-queue .pp-empty{color:var(--ink-dim);font-style:italic}
+  .pp-queue .qrow{display:flex;justify-content:space-between;align-items:center}
+  .pp-queue .qrow button{background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px;padding:0 4px}
+  .pp-actions{display:flex;gap:8px}
+  .pp-actions button{flex:1;padding:10px 12px;font-size:13px}
+  .cell.selectable{cursor:pointer}
+  .warrior-sel{outline:3px solid var(--gold)}
+
+  /* ---- 보드 ---- */
+  .board-wrap{grid-area:board;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;background:linear-gradient(180deg,#f8fafc,#eef2f7)}
+  #board{width:min(100%,calc(100vh - 126px));height:min(100%,calc(100vh - 126px));max-width:100%;max-height:100%;aspect-ratio:1/1;display:block}
+  .board-empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--ink-dim);text-align:center;padding:24px}
+  .board-empty .drop{
+    border:1.5px dashed var(--line);border-radius:14px;padding:40px 54px;
+    font-family:var(--mono);font-size:13px;line-height:1.9;
+  }
+  .board-empty .drop b{color:var(--ink)}
+  .legend{position:absolute;left:16px;bottom:16px;display:flex;flex-direction:column;gap:6px;font-family:var(--mono);font-size:11px;color:var(--ink-dim)}
+  .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:7px;vertical-align:-1px}
+
+  /* ---- 사이드 ---- */
+  aside{grid-area:side;border-left:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;overflow:hidden;box-shadow:-10px 0 28px rgba(23,32,51,.06)}
+  .side-command-grid{flex:1;min-height:0;display:grid;grid-template-columns:minmax(290px,1fr) minmax(280px,.95fr);background:var(--line)}
+  .turn-column,.status-column{min-width:0;min-height:0;background:var(--panel);display:flex;flex-direction:column}
+  .status-column{overflow:hidden}
+  .turn-column{background:#fffbeb}
+  .turn-placeholder{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;padding:18px;font-family:var(--mono);font-size:12px;line-height:1.65;color:#8a6b12;background:#fffbeb}
+  .play-panel.show + .turn-placeholder{display:none}
+  .side-status{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line);background:#f8fafc;font-family:var(--mono)}
+  .side-status .day{font-size:20px;font-weight:900;color:var(--ink)}
+  .side-status .meta{justify-self:end;color:var(--ink-dim);font-size:11px;text-align:right;line-height:1.45}
+  .side-status .hint{grid-column:1 / -1;color:var(--ink-dim);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .players{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line)}
+  .status-column .side-status{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:4px 10px;padding:8px 12px;background:#f8fafc}
+  .status-column .side-status .day{font-size:18px;line-height:1}
+  .status-column .side-status .meta{justify-self:stretch;text-align:left;background:#fff;border:1px solid var(--line);border-radius:6px;padding:5px 8px;color:var(--ink-dim);font-size:10px;line-height:1.35}
+  .status-column .side-status .hint{grid-column:1 / -1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25;font-size:10px}
+  .status-column .players{grid-template-columns:1fr}
+  .status-column .region-inspector{flex:1 1 auto;min-height:0;max-height:none;overflow:auto}
+  .status-column .events{flex:0 0 160px;min-height:160px}
+  .status-column .result-banner{flex:0 0 auto}
+  .pcard{background:var(--panel);padding:9px 12px}
+  .pcard.left{border-top:3px solid var(--left-strong)}
+  .pcard.right{border-top:3px solid var(--right-strong)}
+  .pcard h3{margin:0 0 6px;font-size:11px;letter-spacing:.08em;font-family:var(--mono)}
+  .pcard.left h3{color:var(--left)}
+  .pcard.right h3{color:var(--right)}
+  .stat{display:flex;justify-content:space-between;gap:8px;font-size:11px;padding:1px 0}
+  .stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0 8px;margin-top:6px}
+  .stat-grid .stat{display:block;padding:0}
+  .stat .k{color:var(--ink-dim)}
+  .stat .v{font-family:var(--mono);font-weight:800}
+  .stat-grid .k{display:block;font-size:9px;white-space:nowrap}
+  .stat-grid .v{display:block;font-size:11px}
+  .hp-bar{height:6px;background:var(--panel-2);border-radius:4px;overflow:hidden;margin-top:3px}
+  .hp-bar > i{display:block;height:100%;background:var(--ok);transition:.2s}
+
+  .events{flex:1;overflow:auto;padding:12px 14px;border-top:1px solid var(--line)}
+  .events h4{margin:0 0 8px;font-size:11px;letter-spacing:.12em;font-family:var(--mono);color:var(--ink-dim)}
+  .ev{font-family:var(--mono);font-size:12px;line-height:1.7;padding:2px 0;border-bottom:1px dotted #d8dee8}
+  .ev .tag{display:inline-block;min-width:58px;color:var(--ink-dim)}
+  .ev.dmg .tag{color:var(--danger)}
+  .ev.train .tag{color:var(--ok)}
+  .ev.up .tag{color:var(--gold)}
+  .ev.move .tag{color:var(--right)}
+  .ev.siege .tag{color:#d98b80}
+  .ev.empty{color:var(--ink-dim);font-style:italic}
+
+  .result-banner{padding:12px 14px;border-top:1px solid var(--line);font-family:var(--mono);font-size:13px;text-align:center;display:none}
+  .result-banner.show{display:block}
+
+  /* ---- 타임라인 ---- */
+  .timeline{grid-area:time;border-top:1px solid var(--line);background:var(--panel);padding:12px 20px;display:flex;align-items:center;gap:16px;box-shadow:0 -8px 24px rgba(23,32,51,.05)}
+  .tl-btns{display:flex;gap:6px}
+  .tl-btns button{
+    width:38px;height:34px;border-radius:6px;border:1px solid var(--line);
+    background:var(--panel-2);color:var(--ink);cursor:pointer;font-size:14px;transition:.15s;
+  }
+  .tl-btns button:hover{border-color:var(--gold)}
+  .tl-btns button.play{background:var(--gold);color:#1a1a1a;border-color:var(--gold);font-weight:700}
+  .tl-slider{flex:1;display:flex;align-items:center;gap:12px}
+  input[type=range]{flex:1;accent-color:var(--gold)}
+  .daylabel{font-family:var(--mono);font-size:13px;min-width:96px;text-align:right}
+  .speed{font-family:var(--mono);font-size:12px;color:var(--ink-dim);display:flex;align-items:center;gap:6px}
+  .speed select{background:var(--panel-2);color:var(--ink);border:1px solid var(--line);border-radius:5px;padding:4px 6px;font-family:var(--mono)}
+
+  /* 셀 호버 툴팁 */
+  .tip{position:absolute;pointer-events:none;background:#fff;border:1px solid var(--line);border-radius:7px;padding:8px 10px;font-family:var(--mono);font-size:11px;line-height:1.6;color:var(--ink);max-width:250px;z-index:20;display:none;box-shadow:0 12px 28px rgba(23,32,51,.16)}
+  .tip b{color:var(--gold)}
+
+  .rules-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:28px;background:rgba(23,32,51,.28);z-index:50}
+  .rules-modal.show{display:flex}
+  .rules-box{width:min(900px,94vw);max-height:min(760px,88vh);display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 26px 70px rgba(23,32,51,.24);overflow:hidden}
+  .rules-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 18px;border-bottom:1px solid var(--line);background:#f8fafc}
+  .rules-head b{font-size:16px}
+  .rules-body{overflow:auto;padding:18px 22px;color:var(--ink);line-height:1.65}
+  .rules-body h1,.rules-body h2,.rules-body h3{line-height:1.25;margin:18px 0 8px}
+  .rules-body h1:first-child,.rules-body h2:first-child,.rules-body h3:first-child{margin-top:0}
+  .rules-body p{margin:8px 0}
+  .rules-body pre{overflow:auto;background:#f5f7fb;border:1px solid var(--line);border-radius:8px;padding:10px}
+  .rules-body code{font-family:var(--mono);font-size:.92em;background:#f5f7fb;border:1px solid #e5eaf2;border-radius:4px;padding:1px 4px}
+  .rules-body pre code{border:0;padding:0;background:transparent}
+
+  @media (max-width:1050px){
+    body{grid-template-columns:1fr;grid-template-areas:"head" "board" "side" "time";}
+    aside{max-height:38vh}
+    .side-command-grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand"><b>NEXT&nbsp;NATION</b><span>전장 뷰어 · REPLAY</span></div>
+    <div class="live-badge" id="liveBadge"><i></i>LIVE · 시드 <span id="liveSeed">–</span></div>
+    <div class="head-actions">
+      <div class="newgame" id="cpptestPanel" style="display:none">
+        <span class="ng-label">직접 플레이</span>
+        <label class="radio"><input type="radio" name="mapmode" value="random" checked>랜덤</label>
+        <label class="radio"><input type="radio" name="mapmode" value="seed">시드</label>
+        <input id="seedInput" type="text" inputmode="numeric" placeholder="시드 숫자" disabled>
+        <span class="ng-sep"></span>
+        <select id="cppExeSelect">
+          <option value="">exe 선택...</option>
+        </select>
+        <button class="ghost" id="cppRefreshBtn" title="폴더 다시 스캔">↻</button>
+        <span class="ng-sep"></span>
+        <div class="side-select" aria-label="진영 선택">
+          <label class="side-option"><input type="radio" name="playside" value="LEFT" checked>LEFT(A)</label>
+          <label class="side-option"><input type="radio" name="playside" value="RIGHT">RIGHT(B)</label>
+        </div>
+        <button class="ghost play-human" id="cppStartBtn">▶ 직접 플레이</button>
+      </div>
+      <label class="file-btn">로그 열기
+        <input id="fileInput" type="file" accept=".txt,.log,text/plain">
+      </label>
+      <button class="ghost" id="sampleBtn">샘플 보기</button>
+      <button class="ghost" id="rulesBtn">게임 규칙</button>
+    </div>
+  </header>
+
+  <div class="board-wrap" id="boardWrap">
+    <svg id="board" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="board-empty" id="emptyState">
+      <div class="drop">
+        <b>로그 파일을 여기로 끌어다 놓으세요</b><br>
+        또는 우측 상단 <b>로그 열기</b> 버튼<br>
+        <span style="opacity:.6">testing-tool.py 가 만든 log.txt</span>
+      </div>
+    </div>
+    <div class="legend" id="legend" style="display:none">
+      <div><i style="background:var(--left-strong)"></i>LEFT 본부 / 진영</div>
+      <div><i style="background:var(--right-strong)"></i>RIGHT 본부 / 진영</div>
+      <div><i style="background:var(--gold);border:1px solid #b9a82f"></i>거점 (건설 가능)</div>
+    </div>
+    <div class="tip" id="tip"></div>
+  </div>
+
+  <aside>
+    <div class="side-command-grid">
+      <div class="turn-column">
+        <!-- 직접 플레이 조작 패널 (사람 대국 중에만 표시) -->
+        <div class="play-panel" id="playPanel">
+          <div class="pp-head">
+            <span id="ppTurn">내 차례 · 1일</span>
+            <span class="pp-side" id="ppSide">LEFT(A)</span>
+          </div>
+          <div class="pp-hint" id="ppHint">전사를 클릭한 뒤 목적지 구역을 클릭하면 이동 명령이 추가됩니다. 거점/본부는 아군 전사가 그 칸에 있을 때 건설·업그레이드.</div>
+          <div class="pp-train">
+            <label>병사 생성 <input id="ppTrain" type="number" min="0" value="0" style="width:52px"></label>
+            <span class="pp-train-cap" id="ppTrainCap">(가능 0)</span>
+          </div>
+          <div class="pp-queue" id="ppQueue"><div class="pp-empty">아직 명령 없음</div></div>
+          <div class="pp-actions">
+            <button class="ghost" id="ppClear">초기화</button>
+            <button class="ghost play-new" id="ppSubmit">제출 ▶</button>
+          </div>
+        </div>
+        <div class="turn-placeholder">직접 플레이를 시작하면<br>이 열 전체가 내 차례 입력 전용으로 바뀝니다.</div>
+      </div>
+
+      <div class="status-column">
+        <div class="side-status" id="sideStatus">
+          <div class="day" id="sideDay">DAY –</div>
+          <div class="meta" id="sideMode">REPLAY<br>시드 –</div>
+          <div class="hint" id="sideHint">현재 정보가 여기에 표시됩니다.</div>
+        </div>
+        <div class="players">
+          <div class="pcard left">
+            <h3>◤ LEFT (A)</h3>
+            <div class="stat"><span class="k">본부 HP</span><span class="v" id="lHqHp">–</span></div>
+            <div class="hp-bar"><i id="lHqBar" style="width:0%"></i></div>
+            <div class="stat-grid">
+              <div class="stat"><span class="k">금화</span><span class="v" id="lGold">–</span></div>
+              <div class="stat"><span class="k">전사</span><span class="v" id="lWar">–</span></div>
+              <div class="stat"><span class="k">건물</span><span class="v" id="lBld">–</span></div>
+              <div class="stat"><span class="k">초읽기</span><span class="v" id="lTok">–</span></div>
+            </div>
+          </div>
+          <div class="pcard right">
+            <h3>RIGHT (B) ◢</h3>
+            <div class="stat"><span class="k">본부 HP</span><span class="v" id="rHqHp">–</span></div>
+            <div class="hp-bar"><i id="rHqBar" style="width:0%"></i></div>
+            <div class="stat-grid">
+              <div class="stat"><span class="k">금화</span><span class="v" id="rGold">–</span></div>
+              <div class="stat"><span class="k">전사</span><span class="v" id="rWar">–</span></div>
+              <div class="stat"><span class="k">건물</span><span class="v" id="rBld">–</span></div>
+              <div class="stat"><span class="k">초읽기</span><span class="v" id="rTok">–</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="events">
+          <h4>이 날의 사건</h4>
+          <div id="evList"><div class="ev empty">로그를 불러오면 표시됩니다.</div></div>
+        </div>
+        <div class="result-banner" id="resultBanner"></div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="timeline">
+    <div class="tl-btns">
+      <button id="firstBtn" title="처음">⏮</button>
+      <button id="prevBtn" title="이전 날">◀</button>
+      <button id="playBtn" class="play" title="재생/정지">▶</button>
+      <button id="nextBtn" title="다음 날">▶</button>
+      <button id="lastBtn" title="마지막">⏭</button>
+    </div>
+    <div class="tl-slider">
+      <input id="slider" type="range" min="0" max="0" value="0" step="1" disabled>
+      <span class="daylabel" id="dayLabel">– / –</span>
+    </div>
+    <div class="speed">배속
+      <select id="speedSel">
+        <option value="900">0.5×</option>
+        <option value="450" selected>1×</option>
+        <option value="220">2×</option>
+        <option value="90">5×</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="rules-modal" id="rulesModal" role="dialog" aria-modal="true" aria-labelledby="rulesTitle">
+    <div class="rules-box">
+      <div class="rules-head">
+        <b id="rulesTitle">NEXT NATION 게임 규칙</b>
+        <button class="ghost" id="rulesClose" type="button">닫기</button>
+      </div>
+      <div class="rules-body" id="rulesBody">규칙 문서를 불러오는 중입니다.</div>
+    </div>
+  </div>
+
+<!-- d3-delaunay: 중심 좌표로부터 보로노이 셀을 그리기 위한 유일한 외부 의존성.
+     로컬 사본을 우선 사용(오프라인 동작), 없으면 CDN 폴백. -->
+<script src="d3-delaunay.min.js" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/d3-delaunay@6/dist/d3-delaunay.min.js';document.head.appendChild(s);"></script>
+<script src="viewer_core.js"></script>
+</body>
+</html>
