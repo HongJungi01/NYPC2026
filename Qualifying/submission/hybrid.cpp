@@ -883,10 +883,12 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
 // Infer the opponent's posture from observed state so the lookahead rolls them
 // forward realistically (not a fixed mirror). Full information makes this cheap:
 // army pushing into our half -> RUSH; many bases -> EXPAND; small & home -> TURTLE.
-// READY but DISABLED: vs the balanced-ish §4a baseline it's a wash (shuffles a few
-// seeds), and its real payoff is vs diverse opponents we can't benchmark here yet.
-// Enable by setting `mirror = infer_opp_policy(...)` once a varied sparring set
-// validates it.
+//
+// DISABLED (kept for the record): benchmarked vs a 6-bot pool (rush / two §4a
+// managers / alt-hybrid / turtle / expand), it is WORSE than a fixed BALANCED
+// mirror -- 28-6 vs 33-6, and notably 2-4 vs a turtle (6-0 for BALANCED).
+// Modeling a defensive opponent makes our lookahead timid and it fails to grind
+// out wins. The fixed BALANCED mirror keeps us aggressive. Do not enable.
 [[maybe_unused]] static Policy infer_opp_policy(const SimState &S,
                                                 const GameMap &M, const Paths &P) {
   Side opp = opposite(M.my_side);
@@ -911,7 +913,11 @@ static Cmds hybrid_decide(const SimState &S0, const GameMap &M, const Paths &P,
                           const Strat &ST, int turn) {
   static const Policy CANDS[] = {presets::BALANCED, presets::TURTLE,
                                  presets::RUSH, presets::EXPAND};
+#ifdef USE_INFER
+  const Policy mirror = infer_opp_policy(S0, M, P);
+#else
   const Policy mirror = presets::BALANCED; // infer_opp_policy(S0,M,P): see note
+#endif
   // Win-condition lookahead: roll forward toward day 200, not a 16-day snapshot.
   // Late game K = days left -> the eval IS the exact tiebreak/HQ-kill terminal;
   // mid game it's capped to fit the 100ms budget (cands x K sim-days).
@@ -1162,7 +1168,16 @@ int main() {
   Strat ST = build_strat(M, P);
   int turn;
   while (read_turn_start(turn)) {
+#ifdef SCRIPT_BOT
+    // Sparring opponent: run a single fixed posture with NO lookahead (reuses the
+    // validated gen_cmds). Pick with -DSCRIPT_POLICY=presets::TURTLE etc.
+#ifndef SCRIPT_POLICY
+#define SCRIPT_POLICY presets::BALANCED
+#endif
+    Cmds a = gen_cmds(S, M, P, ST, M.my_side, SCRIPT_POLICY, turn);
+#else
     Cmds a = hybrid_decide(S, M, P, ST, turn);
+#endif
     emit_cmds(M, a);
     read_turn_result(S, M, a);
 #ifdef DBG_ECON
