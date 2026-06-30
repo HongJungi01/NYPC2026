@@ -1087,8 +1087,226 @@ static Cmds strategy_manager(const SimState &S0, const GameMap &M, const Paths &
   return best_day0;
 }
 
+// ================= world-model reconstruction (shared path) =================
+// The live contest path AND the OBS_TEST harness both fold a referee result
+// block (send format) into our world model via apply_result_block. Enemy units,
+// counts, buildings and levels are reconstructed EXACTLY from the observed
+// events; only opp gold is an estimate (see OppGoldTracker).
+
+struct OppGoldTracker {
+  std::set<int> moving; // opp suffixes mid move-run last turn (for move-cost timing)
+};
+
+static std::vector<std::string> rb_tokens(const std::string &s) {
+  std::vector<std::string> out;
+  std::istringstream is(s);
+  for (std::string t; is >> t;) out.push_back(t);
+  return out;
+}
+
+// Charge our own commands, fold in BOTH sides' observed events, then evening
+// income/upkeep. `me` is the viewpoint side; `next` yields the next input line
+// (cin for live, a vector iterator for the harness). Exact except opp gold,
+// whose only approximation is opp move-cost timing.
+template <class NextLine>
+static void apply_result_block(SimState &S, const GameMap &M, Side me,
+                               const Cmds &mine, OppGoldTracker &gt, NextLine next) {
+  // charge our own commands locally (gold is hidden by the referee).
+  for (int r : mine.upgrades) {
+    Building *b = building_at(S, r);
+    if (!b) S.gold[(int)me] -= BASE_BUILD_COST;
+    else if (b->level >= b->max_level()) S.gold[(int)me] -= b->heal_cost();
+    else S.gold[(int)me] -= b->next_level_cost();
+  }
+  for (auto [suffix, target] : mine.moves) {
+    const Building *b = building_at(S, target);
+    int cost = (b && b->side == me) ? 0 : MOVE_COST;
+    S.gold[(int)me] -= cost;
+    if (Warrior *w = warrior_by_suffix(S, me, suffix)) {
+      w->state = WState::MOVING;
+      w->target = target;
+    }
+  }
+  S.gold[(int)me] -= (long long)TRAIN_COST * mine.train_n;
+
+  {
+    std::string line = next();
+    if (line == "FINISH") std::exit(0);
+  }
+  (void)next(); // TIME
+  // UPGRADE
+  {
+    auto t = rb_tokens(next());
+    int n = std::stoi(t.at(1));
+    for (int i = 0; i < n; ++i) {
+      auto r = rb_tokens(next());
+      Side s = parse_side_char(r.at(0)[0]);
+      int region = std::stoi(r.at(1));
+      Building *b = building_at(S, region);
+      int cost = !b ? BASE_BUILD_COST
+                    : (b->level >= b->max_level() ? b->heal_cost()
+                                                  : b->next_level_cost());
+      if (s != me) S.gold[(int)s] -= cost; // opp estimate; mine charged above
+      if (!b) {
+        S.buildings.push_back({region, s, BType::BASE, 1, BASE_LEVELS[1].hp});
+      } else {
+        if (b->level >= b->max_level()) b->hp = b->max_hp_now();
+        else { b->level += 1; b->hp = b->max_hp_now(); }
+      }
+    }
+  }
+  // TRAIN
+  {
+    auto t = rb_tokens(next());
+    int n = std::stoi(t.at(1));
+    if (n > 0) {
+      auto ids = rb_tokens(next());
+      for (int i = 0; i < n; ++i) {
+        Side s = parse_side_char(ids.at(i)[0]);
+        int suffix = std::stoi(ids.at(i).substr(1));
+        int hqr = hq_region_of(M, s);
+        Building *hqb = building_at(S, hqr);
+        int lvl = hqb ? hqb->level : 1;
+        if (s != me) S.gold[(int)s] -= TRAIN_COST; // opp estimate
+        S.warriors.push_back({{s, suffix}, hqr, HQ_LEVELS[lvl].warrior_hp});
+        S.next_suffix[(int)s] = std::max(S.next_suffix[(int)s], suffix + 1);
+      }
+    }
+  }
+  // MOVE
+  {
+    // Opp move-cost estimate. The referee charges MOVE_COST once per move
+    // COMMAND (free if the command's TARGET is the mover's own building), but we
+    // only observe resulting positions, not commands or targets.
+    //
+    // Two estimators, selectable at compile time:
+    //  - default (naive): charge at run start unless the FIRST observed step
+    //    lands on an own building. Mis-charges multi-step moves INTO own
+    //    buildings (rally/recall/fill-labor) -> under-estimates opp gold, which
+    //    happens to keep the lookahead aggressive (see ACCURATE note below).
+    //  - ACCURATE_OPP_GOLD: charge at run start, then REFUND when the unit
+    //    SETTLES on its own building (its target was friendly => move was free).
+    //    Cuts opp-gold error ~20-78% (validated by OBS_TEST), but a paired
+    //    self-play (5-7 over 12) shows it does NOT help play: a richer (accurate)
+    //    opp model makes us timid, mirroring why USE_INFER is disabled. Kept as a
+    //    validated option for future use; OFF by default to preserve play.
+    std::set<int> opp_cur_moved;
+    auto t = rb_tokens(next());
+    int n = std::stoi(t.at(1));
+    for (int i = 0; i < n; ++i) {
+      auto r = rb_tokens(next());
+      Side s = parse_side_char(r.at(0)[0]);
+      int suffix = std::stoi(r.at(0).substr(1));
+      int region = std::stoi(r.at(1));
+      if (s != me) {
+        opp_cur_moved.insert(suffix);
+        if (!gt.moving.count(suffix)) {
+#ifdef ACCURATE_OPP_GOLD
+          S.gold[(int)s] -= MOVE_COST; // run start; refunded below on settle
+#else
+          const Building *b = building_at(S, region);
+          S.gold[(int)s] -= (b && b->side == s) ? 0 : MOVE_COST;
+#endif
+        }
+      }
+      if (Warrior *w = warrior_by_suffix(S, s, suffix)) {
+        w->region = region;
+        if (w->state == WState::MOVING && w->region == w->target)
+          w->state = WState::STATIONARY;
+      }
+    }
+#ifdef ACCURATE_OPP_GOLD
+    // A run that stopped this turn reached its target; if that target is the
+    // mover's own building the move was free -> refund the run-start charge.
+    Side opp = opposite(me);
+    for (int suffix : gt.moving) {
+      if (opp_cur_moved.count(suffix)) continue; // still in a run
+      if (Warrior *w = warrior_by_suffix(S, opp, suffix)) {
+        const Building *b = building_at(S, w->region);
+        if (b && b->side == opp) S.gold[(int)opp] += MOVE_COST;
+      }
+    }
+#endif
+    gt.moving = opp_cur_moved;
+  }
+  // DAMAGE
+  {
+    auto t = rb_tokens(next());
+    int n = std::stoi(t.at(1));
+    for (int i = 0; i < n; ++i) {
+      auto r = rb_tokens(next());
+      Side s = parse_side_char(r.at(1)[0]);
+      int suffix = std::stoi(r.at(1).substr(1));
+      int dmg = std::stoi(r.at(2));
+      if (Warrior *w = warrior_by_suffix(S, s, suffix)) w->hp -= dmg;
+    }
+    S.warriors.erase(std::remove_if(S.warriors.begin(), S.warriors.end(),
+                                    [](const Warrior &w) { return w.hp <= 0; }),
+                     S.warriors.end());
+  }
+  // SIEGE
+  {
+    auto t = rb_tokens(next());
+    int n = std::stoi(t.at(1));
+    for (int i = 0; i < n; ++i) {
+      auto r = rb_tokens(next());
+      int region = std::stoi(r.at(1));
+      int dmg = std::stoi(r.at(2));
+      if (Building *b = building_at(S, region)) b->hp -= dmg;
+    }
+    S.buildings.erase(std::remove_if(S.buildings.begin(), S.buildings.end(),
+                                     [](const Building &b) { return b.hp <= 0; }),
+                      S.buildings.end());
+  }
+  (void)next(); // END
+
+  // Evening income/upkeep for BOTH sides (exact for us; opp gold is an estimate
+  // that approximates opp move costs, so it can run slightly high -> conservative).
+  for (int sv = 0; sv < 2; ++sv) {
+    Side s = (Side)sv;
+    S.gold[sv] += side_income(S, s);
+    int alive = 0;
+    for (const auto &w : S.warriors)
+      if (w.id.side == s) alive++;
+    S.gold[sv] = std::max(0LL, S.gold[sv] - (long long)UPKEEP_PER_WARRIOR * alive);
+  }
+}
+
+// Serialize a ResultBlock into the referee's per-bot send format (counts +
+// lines) as seen by side `me`. Used by the OBS_TEST harness to drive the exact
+// same parsing path apply_result_block uses live. (Event order within a block
+// does not affect the reconstructed state.)
+static std::vector<std::string> to_send_block(const ResultBlock &rb, int day) {
+  std::vector<std::string> out;
+  out.push_back("TURN " + std::to_string(day));
+  out.push_back("TIME 0 0 0 0");
+  out.push_back("UPGRADE " + std::to_string(rb.upgrades.size()));
+  for (auto &[r, s] : rb.upgrades)
+    out.push_back(std::string(1, side_char(s)) + " " + std::to_string(r));
+  out.push_back("TRAIN " + std::to_string(rb.trained.size()));
+  if (!rb.trained.empty()) {
+    std::string line;
+    for (size_t i = 0; i < rb.trained.size(); ++i)
+      line += (i ? " " : "") + id_str(rb.trained[i]);
+    out.push_back(line);
+  }
+  out.push_back("MOVE " + std::to_string(rb.moves.size()));
+  for (auto &[k, r] : rb.moves)
+    out.push_back(id_str(k) + " " + std::to_string(r));
+  out.push_back("DAMAGE " + std::to_string(rb.damages.size()));
+  for (auto &[cause, k, d] : rb.damages)
+    out.push_back(std::string(CAUSE_NAME[cause]) + " " + id_str(k) + " " +
+                  std::to_string(d));
+  out.push_back("SIEGE " + std::to_string(rb.sieges.size()));
+  for (auto &[s, r, d] : rb.sieges)
+    out.push_back(std::string(1, side_char(s)) + " " + std::to_string(r) + " " +
+                  std::to_string(d));
+  out.push_back("END");
+  return out;
+}
+
 // ================================ contest I/O ================================
-#ifndef SIM_TEST
+#if !defined(SIM_TEST) && !defined(OBS_TEST)
 
 static std::string readln() {
   std::string s;
@@ -1149,145 +1367,12 @@ static bool read_turn_start(int &turn) {
 }
 
 // Update our world model S from the referee's result block for our submitted
-// commands. This is the *observed* update (single source of truth each turn);
-// the simulator is used only for hypothetical lookahead in decide().
+// commands (the *observed* single source of truth each turn). Thin wrapper over
+// the shared apply_result_block; the static tracker persists opp move-run state
+// across turns for the opp-gold estimate.
 static void read_turn_result(SimState &S, const GameMap &M, const Cmds &mine) {
-  // charge our own commands locally (gold is hidden by the referee).
-  for (int r : mine.upgrades) {
-    Building *b = building_at(S, r);
-    if (!b) {
-      S.gold[(int)M.my_side] -= BASE_BUILD_COST;
-    } else if (b->level >= b->max_level()) {
-      S.gold[(int)M.my_side] -= b->heal_cost();
-    } else {
-      S.gold[(int)M.my_side] -= b->next_level_cost();
-    }
-  }
-  for (auto [suffix, target] : mine.moves) {
-    const Building *b = building_at(S, target);
-    int cost = (b && b->side == M.my_side) ? 0 : MOVE_COST;
-    S.gold[(int)M.my_side] -= cost;
-    if (Warrior *w = warrior_by_suffix(S, M.my_side, suffix)) {
-      w->state = WState::MOVING;
-      w->target = target;
-    }
-  }
-  S.gold[(int)M.my_side] -= (long long)TRAIN_COST * mine.train_n;
-
-  {
-    std::string line = readln();
-    if (line == "FINISH") std::exit(0);
-  }
-  (void)readln(); // TIME
-  // UPGRADE
-  {
-    auto t = tokens(readln());
-    int n = std::stoi(t.at(1));
-    for (int i = 0; i < n; ++i) {
-      auto r = tokens(readln());
-      Side s = parse_side_char(r.at(0)[0]);
-      int region = std::stoi(r.at(1));
-      Building *b = building_at(S, region);
-      int cost = !b ? BASE_BUILD_COST
-                    : (b->level >= b->max_level() ? b->heal_cost()
-                                                  : b->next_level_cost());
-      if (s != M.my_side) S.gold[(int)s] -= cost; // opp estimate; mine charged above
-      if (!b) {
-        S.buildings.push_back({region, s, BType::BASE, 1, BASE_LEVELS[1].hp});
-      } else {
-        if (b->level >= b->max_level()) b->hp = b->max_hp_now();
-        else { b->level += 1; b->hp = b->max_hp_now(); }
-      }
-    }
-  }
-  // TRAIN
-  {
-    auto t = tokens(readln());
-    int n = std::stoi(t.at(1));
-    if (n > 0) {
-      auto ids = tokens(readln());
-      for (int i = 0; i < n; ++i) {
-        Side s = parse_side_char(ids.at(i)[0]);
-        int suffix = std::stoi(ids.at(i).substr(1));
-        int hqr = hq_region_of(M, s);
-        Building *hqb = building_at(S, hqr);
-        int lvl = hqb ? hqb->level : 1;
-        if (s != M.my_side) S.gold[(int)s] -= TRAIN_COST; // opp estimate
-        S.warriors.push_back({{s, suffix}, hqr, HQ_LEVELS[lvl].warrior_hp});
-        S.next_suffix[(int)s] = std::max(S.next_suffix[(int)s], suffix + 1);
-      }
-    }
-  }
-  // MOVE
-  {
-    // Track opponent move costs to sharpen the opp-gold estimate: charge once at
-    // the START of each contiguous move-run (was-stationary -> moving), free if
-    // the step lands on their own building.
-    static std::set<int> opp_prev_moved;
-    std::set<int> opp_cur_moved;
-    auto t = tokens(readln());
-    int n = std::stoi(t.at(1));
-    for (int i = 0; i < n; ++i) {
-      auto r = tokens(readln());
-      Side s = parse_side_char(r.at(0)[0]);
-      int suffix = std::stoi(r.at(0).substr(1));
-      int region = std::stoi(r.at(1));
-      if (s != M.my_side) {
-        opp_cur_moved.insert(suffix);
-        if (!opp_prev_moved.count(suffix)) {
-          const Building *b = building_at(S, region);
-          S.gold[(int)s] -= (b && b->side == s) ? 0 : MOVE_COST;
-        }
-      }
-      if (Warrior *w = warrior_by_suffix(S, s, suffix)) {
-        w->region = region;
-        if (w->state == WState::MOVING && w->region == w->target)
-          w->state = WState::STATIONARY;
-      }
-    }
-    opp_prev_moved = opp_cur_moved;
-  }
-  // DAMAGE
-  {
-    auto t = tokens(readln());
-    int n = std::stoi(t.at(1));
-    for (int i = 0; i < n; ++i) {
-      auto r = tokens(readln());
-      Side s = parse_side_char(r.at(1)[0]);
-      int suffix = std::stoi(r.at(1).substr(1));
-      int dmg = std::stoi(r.at(2));
-      if (Warrior *w = warrior_by_suffix(S, s, suffix)) w->hp -= dmg;
-    }
-    S.warriors.erase(std::remove_if(S.warriors.begin(), S.warriors.end(),
-                                    [](const Warrior &w) { return w.hp <= 0; }),
-                     S.warriors.end());
-  }
-  // SIEGE
-  {
-    auto t = tokens(readln());
-    int n = std::stoi(t.at(1));
-    for (int i = 0; i < n; ++i) {
-      auto r = tokens(readln());
-      int region = std::stoi(r.at(1));
-      int dmg = std::stoi(r.at(2));
-      if (Building *b = building_at(S, region)) b->hp -= dmg;
-    }
-    S.buildings.erase(std::remove_if(S.buildings.begin(), S.buildings.end(),
-                                     [](const Building &b) { return b.hp <= 0; }),
-                      S.buildings.end());
-  }
-  (void)readln(); // END
-
-  // Evening income/upkeep for BOTH sides (exact for us; opp gold is an estimate
-  // that ignores opp move costs, so it runs slightly high -> conservative).
-  for (int sv = 0; sv < 2; ++sv) {
-    Side s = (Side)sv;
-    S.gold[sv] += side_income(S, s);
-    int alive = 0;
-    for (const auto &w : S.warriors)
-      if (w.id.side == s) alive++;
-    S.gold[sv] = std::max(0LL, S.gold[sv] - (long long)UPKEEP_PER_WARRIOR * alive);
-  }
+  static OppGoldTracker gt;
+  apply_result_block(S, M, M.my_side, mine, gt, readln);
 }
 
 static void emit_cmds(const GameMap &M, const Cmds &a) {
@@ -1338,7 +1423,7 @@ int main() {
   return 0;
 }
 
-// =============================== SIM_TEST gate ===============================
+// ========================= SIM_TEST / OBS_TEST gate ==========================
 #else
 
 static std::vector<std::string> split(const std::string &s) {
@@ -1440,12 +1525,149 @@ static int replay(const std::string &path) {
   return 0;
 }
 
+#ifdef OBS_TEST
+// Observable state = what both players can see: per-unit (side, suffix, region,
+// hp) and per-building (region, side, type, level, hp). Move state/target is
+// internal bookkeeping (unknowable for the opponent) and excluded.
+static bool states_match(const SimState &a, const SimState &b) {
+  auto wk = [](const SimState &s) {
+    std::vector<std::tuple<int, int, int, int>> v;
+    for (const auto &w : s.warriors)
+      v.push_back({(int)w.id.side, w.id.num, w.region, w.hp});
+    std::sort(v.begin(), v.end());
+    return v;
+  };
+  auto bk = [](const SimState &s) {
+    std::vector<std::tuple<int, int, int, int, int>> v;
+    for (const auto &bl : s.buildings)
+      v.push_back({bl.region, (int)bl.side, (int)bl.type, bl.level, bl.hp});
+    std::sort(v.begin(), v.end());
+    return v;
+  };
+  return wk(a) == wk(b) && bk(a) == bk(b);
+}
+
+static void dump_state(const char *tag, const SimState &s) {
+  std::cerr << tag << " W:";
+  for (const auto &w : s.warriors)
+    std::cerr << " " << (w.id.side == Side::LEFT ? 'A' : 'B') << w.id.num << "@"
+              << w.region << "h" << w.hp;
+  std::cerr << " | B:";
+  for (const auto &b : s.buildings)
+    std::cerr << " r" << b.region << (b.side == Side::LEFT ? 'A' : 'B') << "L"
+              << b.level << "h" << b.hp;
+  std::cerr << "\n";
+}
+
+// Validate the LIVE world-model reconstruction (apply_result_block) against the
+// authoritative state (step on exact commands). For each viewpoint side we feed
+// the referee-format result block (derived from step's ResultBlock) into
+// apply_result_block and assert the reconstructed observable state matches; opp
+// gold is the only estimate, so we report its error instead of asserting.
+static int replay_observed(const std::string &path) {
+  std::ifstream in(path);
+  if (!in) { std::cerr << "cannot open " << path << "\n"; return 1; }
+  std::vector<std::string> L;
+  for (std::string s; std::getline(in, s);) {
+    if (!s.empty() && s.back() == '\r') s.pop_back();
+    L.push_back(s);
+  }
+  size_t i = 0;
+  while (i < L.size() && L[i] != "MAP") i++;
+  if (i >= L.size()) { std::cerr << "no MAP block\n"; return 1; }
+  i++;
+  GameMap M;
+  { auto t = split(L[i++]); M.N = std::stoi(t[0]); M.K = std::stoi(t[1]); }
+  { auto t = split(L[i++]); for (int j = 0; j < M.N; ++j) M.x.push_back(std::stoll(t[j])); }
+  { auto t = split(L[i++]); for (int j = 0; j < M.N; ++j) M.y.push_back(std::stoll(t[j])); }
+  { auto t = split(L[i++]); for (size_t j = 1; j < t.size(); ++j) M.strongholds.push_back(std::stoi(t[j])); }
+  std::sort(M.strongholds.begin(), M.strongholds.end());
+  M.adj.assign(M.N, {});
+  for (int r = 0; r < M.N; ++r) {
+    auto t = split(L[i++]);
+    int deg = std::stoi(t[0]);
+    for (int j = 0; j < deg; ++j) M.adj[r].push_back(std::stoi(t[1 + j]));
+    std::sort(M.adj[r].begin(), M.adj[r].end());
+  }
+  if (i < L.size() && L[i] == "END MAP") i++;
+
+  Paths P = calculate_paths(M);
+  SimState st_auth = init_sim(M);
+  SimState st_obs[2] = {init_sim(M), init_sim(M)}; // viewpoint LEFT, RIGHT
+  OppGoldTracker gt[2];
+
+  auto parse_block = [&](size_t &k) -> Cmds {
+    Cmds c;
+    k++; // COMMAND ... START
+    while (k < L.size() && L[k].rfind("COMMAND", 0) != 0) {
+      auto t = split(L[k]);
+      if (!t.empty()) {
+        if (t[0] == "MOVE") c.moves.push_back({std::stoi(t[1].substr(1)), std::stoi(t[2])});
+        else if (t[0] == "TRAIN") c.train_n = std::stoi(t[1]);
+        else if (t[0] == "UPGRADE") c.upgrades.push_back(std::stoi(t[1]));
+      }
+      k++;
+    }
+    k++; // COMMAND ... END
+    return c;
+  };
+
+  long long gold_abs[2] = {0, 0}, gold_max[2] = {0, 0}, gold_me_err = 0;
+  int turns = 0, day = 0;
+  while (i < L.size()) {
+    if (L[i].rfind("RESULT", 0) == 0) break;
+    if (L[i].rfind("TURN ", 0) != 0) { i++; continue; }
+    day = std::stoi(split(L[i])[1]);
+    i++;
+    Cmds cl = parse_block(i);
+    Cmds cr = parse_block(i);
+    if (i < L.size() && L[i].rfind("TURN ", 0) == 0) i++;   // TURN d RESULT
+    if (i < L.size() && L[i].rfind("TIME", 0) == 0) i++;     // TIME
+    while (i < L.size() && L[i].rfind("END TURN", 0) != 0) i++; // skip result lines
+    if (i < L.size()) i++;                                   // END TURN
+
+    ResultBlock rb = step(st_auth, M, P, cl, cr);
+
+    for (int sv = 0; sv < 2; ++sv) {
+      Side me = (Side)sv, opp = opposite(me);
+      const Cmds &mine = (me == Side::LEFT) ? cl : cr;
+      std::vector<std::string> lines = to_send_block(rb, day);
+      size_t li = 0;
+      auto next = [&]() -> std::string { return li < lines.size() ? lines[li++] : std::string("END"); };
+      apply_result_block(st_obs[sv], M, me, mine, gt[sv], next);
+
+      if (!states_match(st_obs[sv], st_auth)) {
+        std::cerr << "OBS MISMATCH viewpoint=" << side_char(me) << " TURN " << day
+                  << " in " << path << "\n";
+        dump_state("obs ", st_obs[sv]);
+        dump_state("auth", st_auth);
+        return 1;
+      }
+      gold_me_err = std::max(gold_me_err, std::llabs(st_obs[sv].gold[(int)me] - st_auth.gold[(int)me]));
+      long long err = std::llabs(st_obs[sv].gold[(int)opp] - st_auth.gold[(int)opp]);
+      gold_abs[sv] += err;
+      gold_max[sv] = std::max(gold_max[sv], err);
+    }
+    turns++;
+  }
+  std::cout << "OBS OK " << path << " : " << turns
+            << " turns, observable state EXACT; gold[me] max-err=" << gold_me_err
+            << "; opp-gold |err| sum(L/R)=" << gold_abs[0] << "/" << gold_abs[1]
+            << " max(L/R)=" << gold_max[0] << "/" << gold_max[1] << "\n";
+  return 0;
+}
+#endif // OBS_TEST
+
 int main(int argc, char **argv) {
   std::vector<std::string> files;
   for (int i = 1; i < argc; ++i) files.push_back(argv[i]);
   if (files.empty()) files.push_back("Seongho/files_3/sample_log.txt");
   int rc = 0;
+#ifdef OBS_TEST
+  for (auto &f : files) rc |= replay_observed(f);
+#else
   for (auto &f : files) rc |= replay(f);
+#endif
   if (rc == 0) std::cout << "ALL OK\n";
   return rc;
 }
