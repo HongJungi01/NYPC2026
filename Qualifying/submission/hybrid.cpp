@@ -1003,14 +1003,24 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
     for (const Building *b : my_b) total_cap += b->work_cap();
     for (const auto &w : S.warriors)
       if (w.hp > 0) (w.id.side == side ? army : opp_army)++;
-    // Match the opponent's production: never let our army cap sit far below
-    // theirs. ARMY_HARD_MAX bounds the O(n^2) combat cost of the lookahead.
+    // Match the opponent's production, but PACED to when their force can actually
+    // arrive: a freshly trained enemy unit is `lane` turns of marching away, and we
+    // add `cap` (train_cap) units/turn, so we only need to be at parity by the time
+    // they reach us. Until then keep just the economy army and let gold bank for
+    // upgrades. t_arr = ETA of an advancing enemy (range-gate) else the full lane
+    // (they must still march from home); needed_now spreads the catch-up over that
+    // grace. ARMY_HARD_MAX bounds the O(n^2) combat cost of the lookahead.
     constexpr int ARMY_HARD_MAX = 60;
-    int cap_army = std::max(std::max(3, total_cap + pol.army_extra),
-                            std::min(opp_army + 4, ARMY_HARD_MAX));
+    long long t_arr = (eta[my_hq] < PINF) ? eta[my_hq] : lane;
+    int parity = std::min(opp_army + 4, ARMY_HARD_MAX);       // don't fall behind
+    int econ_floor = std::max(3, total_cap + pol.army_extra); // economy baseline
+    int needed_now = (t_arr >= PINF)
+                         ? econ_floor // opp unreachable by land -> no army threat
+                         : parity - cap * (int)std::min<long long>(t_arr, parity);
+    int cap_army = std::max(econ_floor, needed_now);
     int income_after = WORK_INCOME * std::min(total_cap, army + 1);
     bool sustainable = income_after - UPKEEP_PER_WARRIOR * (army + 1) >= 0;
-    bool room = army < cap_army; // cap_army tracks the opponent (see above)
+    bool room = army < cap_army; // paced opponent-tracking cap (see above)
     long long floor = pol.train_reserve + (inflight > 0 ? BASE_BUILD_COST : 0);
     // Steady production stays solvent (the defense path emergency-trains / total-
     // mobilizes when actually under attack); cap_army keeps us matching the
