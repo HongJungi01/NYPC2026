@@ -1030,6 +1030,21 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
       n = std::min(n, cap_army - army);
       if (n > 0) { a.train_n = n; budget -= (long long)TRAIN_COST * n; }
     }
+    // Conservative surplus -> HQ level: once the (paced) standing army is already
+    // FULL and there is no near-term threat, spend genuine LEFTOVER gold on an HQ
+    // level the EconomyManager gate didn't take. Never trades away army (the
+    // production above already filled cap_army; we use only what remains), so it
+    // adds upgrades only when truly flush -- e.g. army at the ARMY_HARD_MAX ceiling
+    // in a rich late game.
+    if (!did_hq && army >= cap_army && needed_now <= econ_floor &&
+        !hq_threatened && enemy[my_hq] == 0 && hq->level < HQ_MAX_LEVEL) {
+      int up_cost = HQ_LEVELS[hq->level + 1].upgrade_cost;
+      if (budget >= up_cost + pol.econ_reserve) {
+        a.upgrades.push_back(my_hq);
+        budget -= up_cost;
+        did_hq = true;
+      }
+    }
   }
   return a;
 }
