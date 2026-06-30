@@ -975,15 +975,31 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
       break;
     }
   }
-  // (D) attack: mass at front, then commit a winning wave to the enemy HQ.
+  // (D) attack: mass at the front, then commit a SAFE wave. Per analysis 37881,
+  // chip the enemy's BASES one at a time with a numerical lead rather than
+  // diffusing the army or suiciding into a defended HQ. Commit only with ~4:1
+  // over the target's garrison+turret (resolver-floored) so we finish cleanly;
+  // the HQ is the final target -- reached once the bases are gone or we hold an
+  // overwhelming 4:1 there.
+  auto safe_mass = [&](int region) -> int {
+    const Building *b = building_at(S, region);
+    std::vector<int> dh;
+    for (const auto &w : S.warriors)
+      if (w.hp > 0 && w.region == region && w.id.side != side) dh.push_back(w.hp);
+    int tr = (b && b->side != side) ? b->turret() : 0;
+    int resolver = min_mass_to_take(my_whp, dh, tr, 60);
+    return std::max({pol.attack_mass, resolver, 4 * ((int)dh.size() + tr)});
+  };
+  // Prefer the nearest still-standing enemy base (reachable from the front);
+  // fall back to the HQ when no base is left.
   int target = opp_hq;
-  const Building *eb = building_at(S, target);
-  std::vector<int> def_hps;
-  for (const auto &w : S.warriors)
-    if (w.hp > 0 && w.region == target && w.id.side != side) def_hps.push_back(w.hp);
-  int turret = (eb && eb->side != side) ? eb->turret() : 0;
-  int resolver_mass = min_mass_to_take(my_whp, def_hps, turret, 60);
-  int need_mass = std::max(pol.attack_mass, std::min(resolver_mass, (int)def_hps.size() + turret + 2));
+  long long tbest = PINF;
+  for (const Building *b : wv.opp_b) {
+    if (b->type != BType::BASE || !reachable(P, rally, b->region)) continue;
+    long long d = P.dist[rally][b->region];
+    if (d < tbest) { tbest = d; target = b->region; }
+  }
+  int need_mass = safe_mass(target);
   int enroute = 0;
   for (const auto &w : S.warriors)
     if (w.id.side == side && w.hp > 0 && w.state == WState::MOVING && w.target == target)
@@ -1057,6 +1073,19 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
     if (a.train_n == 0 && room && sustainable && budget >= TRAIN_COST + floor) {
       int n = std::min(cap, (int)((budget - floor) / TRAIN_COST));
       n = std::min(n, cap_army - army);
+      if (n > 0) { a.train_n = n; budget -= (long long)TRAIN_COST * n; }
+    }
+    // E (analysis 37881): never idle gold when we're safe. The paced cap stops
+    // production at parity vs a passive opponent, but banked gold does nothing --
+    // the bot sat on ~700 gold for turns doing nothing and lost a material game.
+    // When not threatened and gold piles past a reserve, convert the surplus into
+    // army (beyond the paced cap) to PRESS the lead -- it feeds the base-chip
+    // attack above. Bounded: spend down to the reserve, train_cap/turn, <= hard max.
+    constexpr long long IDLE_GOLD = 600;
+    if (a.train_n == 0 && !hq_threatened && enemy[my_hq] == 0 &&
+        army < ARMY_HARD_MAX && budget >= TRAIN_COST + IDLE_GOLD) {
+      int n = std::min(cap, (int)((budget - IDLE_GOLD) / TRAIN_COST));
+      n = std::min(n, ARMY_HARD_MAX - army);
       if (n > 0) { a.train_n = n; budget -= (long long)TRAIN_COST * n; }
     }
     // Conservative surplus -> HQ level: once the (paced) standing army is already
