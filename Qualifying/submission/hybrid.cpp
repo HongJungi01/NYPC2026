@@ -1191,20 +1191,22 @@ static void apply_result_block(SimState &S, const GameMap &M, Side me,
   // MOVE
   {
     // Opp move-cost estimate. The referee charges MOVE_COST once per move
-    // COMMAND (free if the command's TARGET is the mover's own building), but we
-    // only observe resulting positions, not commands or targets.
+    // COMMAND, free if the command's TARGET is the mover's own building
+    // (apply_moves), and forbids re-commanding a unit that is already moving. We
+    // observe resulting positions, not commands or targets, so the per-command
+    // cost is inferred from where units END UP. Two estimators:
     //
-    // Two estimators, selectable at compile time:
     //  - default (naive): charge at run start unless the FIRST observed step
-    //    lands on an own building. Mis-charges multi-step moves INTO own
-    //    buildings (rally/recall/fill-labor) -> under-estimates opp gold, which
-    //    happens to keep the lookahead aggressive (see ACCURATE note below).
-    //  - ACCURATE_OPP_GOLD: charge at run start, then REFUND when the unit
-    //    SETTLES on its own building (its target was friendly => move was free).
-    //    Cuts opp-gold error ~20-78% (validated by OBS_TEST), but a paired
-    //    self-play (5-7 over 12) shows it does NOT help play: a richer (accurate)
-    //    opp model makes us timid, mirroring why USE_INFER is disabled. Kept as a
-    //    validated option for future use; OFF by default to preserve play.
+    //    lands on an own building. Mis-charges multi-step moves INTO own buildings
+    //    so opp gold runs LOW (opp looks poorer) -- which keeps the lookahead
+    //    aggressive. This is the shipped estimator; it plays best.
+    //  - OVERESTIMATE_OPP_GOLD: assume opp moves are own-base movement (FREE) and
+    //    charge only when an opp unit SETTLES on a non-own, non-pinned region (a
+    //    confirmed paid attack/expand arrival). Strictly OVER-estimates opp gold
+    //    (OBS_TEST signed err >= 0). Idea was "richer opp = safer/robust", but a
+    //    paired pool test REFUTED it: vs a fixed pool naive went 6-0-6 while this
+    //    went 6-6-0 (0-4 vs the mgr5 economy bot) -- a richer opp model makes us
+    //    timid and lose, same as USE_INFER. Kept, flagged, OFF by default, for the record.
     std::set<int> opp_cur_moved;
     auto t = rb_tokens(next());
     int n = std::stoi(t.at(1));
@@ -1215,14 +1217,12 @@ static void apply_result_block(SimState &S, const GameMap &M, Side me,
       int region = std::stoi(r.at(1));
       if (s != me) {
         opp_cur_moved.insert(suffix);
+#ifndef OVERESTIMATE_OPP_GOLD
         if (!gt.moving.count(suffix)) {
-#ifdef ACCURATE_OPP_GOLD
-          S.gold[(int)s] -= MOVE_COST; // run start; refunded below on settle
-#else
           const Building *b = building_at(S, region);
           S.gold[(int)s] -= (b && b->side == s) ? 0 : MOVE_COST;
-#endif
         }
+#endif
       }
       if (Warrior *w = warrior_by_suffix(S, s, suffix)) {
         w->region = region;
@@ -1230,19 +1230,27 @@ static void apply_result_block(SimState &S, const GameMap &M, Side me,
           w->state = WState::STATIONARY;
       }
     }
-#ifdef ACCURATE_OPP_GOLD
-    // A run that stopped this turn reached its target; if that target is the
-    // mover's own building the move was free -> refund the run-start charge.
+#ifdef OVERESTIMATE_OPP_GOLD
     Side opp = opposite(me);
+    std::set<int> still_moving = opp_cur_moved; // carry pinned (stalled) units
+    auto pinned_by_me = [&](int region) {
+      for (const auto &w2 : S.warriors)
+        if (w2.id.side == me && w2.hp > 0 && w2.region == region) return true;
+      return false;
+    };
     for (int suffix : gt.moving) {
-      if (opp_cur_moved.count(suffix)) continue; // still in a run
-      if (Warrior *w = warrior_by_suffix(S, opp, suffix)) {
-        const Building *b = building_at(S, w->region);
-        if (b && b->side == opp) S.gold[(int)opp] += MOVE_COST;
-      }
+      if (opp_cur_moved.count(suffix)) continue;           // still advancing
+      Warrior *w = warrior_by_suffix(S, opp, suffix);
+      if (!w) continue;                                    // died en route -> free
+      const Building *b = building_at(S, w->region);
+      if (b && b->side == opp) continue;                   // settled on own building -> free
+      if (pinned_by_me(w->region)) { still_moving.insert(suffix); continue; } // stall
+      S.gold[(int)opp] -= MOVE_COST;                       // confirmed paid arrival
     }
-#endif
+    gt.moving = still_moving;
+#else
     gt.moving = opp_cur_moved;
+#endif
   }
   // DAMAGE
   {
@@ -1628,6 +1636,7 @@ static int replay_observed(const std::string &path) {
   };
 
   long long gold_abs[2] = {0, 0}, gold_max[2] = {0, 0}, gold_me_err = 0;
+  long long gold_smin[2] = {0, 0}, gold_smax[2] = {0, 0}; // signed obs-auth: + = over-est
   int turns = 0, day = 0;
   while (i < L.size()) {
     if (L[i].rfind("RESULT", 0) == 0) break;
@@ -1659,16 +1668,20 @@ static int replay_observed(const std::string &path) {
         return 1;
       }
       gold_me_err = std::max(gold_me_err, std::llabs(st_obs[sv].gold[(int)me] - st_auth.gold[(int)me]));
-      long long err = std::llabs(st_obs[sv].gold[(int)opp] - st_auth.gold[(int)opp]);
-      gold_abs[sv] += err;
-      gold_max[sv] = std::max(gold_max[sv], err);
+      long long se = st_obs[sv].gold[(int)opp] - st_auth.gold[(int)opp]; // + = over-est
+      gold_abs[sv] += std::llabs(se);
+      gold_max[sv] = std::max(gold_max[sv], std::llabs(se));
+      gold_smin[sv] = std::min(gold_smin[sv], se);
+      gold_smax[sv] = std::max(gold_smax[sv], se);
     }
     turns++;
   }
   std::cout << "OBS OK " << path << " : " << turns
             << " turns, observable state EXACT; gold[me] max-err=" << gold_me_err
             << "; opp-gold |err| sum(L/R)=" << gold_abs[0] << "/" << gold_abs[1]
-            << " max(L/R)=" << gold_max[0] << "/" << gold_max[1] << "\n";
+            << " max(L/R)=" << gold_max[0] << "/" << gold_max[1]
+            << "; signed(obs-auth) L=[" << gold_smin[0] << "," << gold_smax[0]
+            << "] R=[" << gold_smin[1] << "," << gold_smax[1] << "]\n";
   return 0;
 }
 #endif // OBS_TEST
