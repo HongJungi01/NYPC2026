@@ -1,10 +1,10 @@
-// NEXT NATION — §4(c) hybrid bot.
+// NEXT NATION — §4(c) architecture — StrategyManager bot.
 //
 // Layers (see References/StarCraft.md + plan):
 //   §5 exact two-sided forward simulator  (KEYSTONE — this file, `step`)
 //   §5 combat resolver / eval / opponent model
 //   §4a managers -> parameterized scripted policies (candidate generators)
-//   §4c hybrid driver: candidates x K-day rollout vs mirror -> eval -> pick
+//   StrategyManager (§4c): candidates x K-day rollout vs mirror -> eval -> pick
 //
 // Build:
 //   g++ -O2 -std=c++17 hybrid.cpp -o hybrid.exe          # contest bot
@@ -1009,7 +1009,7 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
   return a;
 }
 
-// ===================== §5 opponent model + §8 hybrid driver ==================
+// ===================== §5 opponent model + §8 StrategyManager ================
 // Opponent assumed to play the BALANCED policy (point-symmetry mirror: same
 // decision rule applied from their HQ). gold[opp] is the running estimate.
 //
@@ -1046,8 +1046,10 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
   return presets::BALANCED;
 }
 
-static Cmds hybrid_decide(const SimState &S0, const GameMap &M, const Paths &P,
-                          const Strat &ST, int turn) {
+// StrategyManager — the top-level coordinator. Sub-managers (Economy/Movement/
+// Military) live in gen_cmds(); here we pick the posture by K-day lookahead.
+static Cmds strategy_manager(const SimState &S0, const GameMap &M, const Paths &P,
+                             const Strat &ST, int turn) {
   static const Policy CANDS[] = {presets::BALANCED, presets::TURTLE,
                                  presets::RUSH, presets::EXPAND};
 #ifdef USE_INFER
@@ -1313,7 +1315,7 @@ int main() {
 #endif
     Cmds a = gen_cmds(S, M, P, ST, M.my_side, SCRIPT_POLICY, turn);
 #else
-    Cmds a = hybrid_decide(S, M, P, ST, turn);
+    Cmds a = strategy_manager(S, M, P, ST, turn);
 #endif
 #ifdef DBG_DEF
     gen_cmds(S, M, P, ST, M.my_side, presets::BALANCED, turn, true); // real-turn threat log
