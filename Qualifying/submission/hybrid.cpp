@@ -765,10 +765,15 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
       drop(here);
     }
   }
+  const Building *ohq = building_at(S, opp_hq);
+  int opp_hq_lvl = (ohq && ohq->side != side) ? ohq->level : 0;
   bool did_hq = false;
   if (hq && mine[my_hq] >= 1 && enemy[my_hq] == 0) {
+    // Keep our HQ level at or above the opponent's: HQ level buys train_cap
+    // (out-produce), work_cap (economy), turret + max-HP (defense & tiebreak).
     bool want = hq->level == 1 || turn >= pol.late_game ||
-                (pol.deep_hq && hq->level < 4);
+                (pol.deep_hq && hq->level < 4) ||
+                (opp_hq_lvl >= hq->level && hq->level < HQ_MAX_LEVEL);
     if (hq->level < HQ_MAX_LEVEL && want) {
       int cost = HQ_LEVELS[hq->level + 1].upgrade_cost;
       if (budget >= cost + pol.econ_reserve) {
@@ -855,6 +860,8 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
     pool.erase(std::remove(pool.begin(), pool.end(), best), pool.end());
     return true;
   };
+  int my_army_total = 0;
+  for (int c : mine) my_army_total += c;
   std::vector<const Building *> threatened;
   for (const Building *b : my_b)
     if (incoming[b->region] > mine[b->region] + b->turret() &&
@@ -871,15 +878,42 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
     int need = min_defenders_to_hold(atk_hps[r], my_whp, b->turret(), 64);
     int have = mine[r];
     int ps = 0, pl = 0;
-    while (have < need && recruit_to(r, mobile)) { have++; ps++; }   // surplus, any bldg
-    if (r == my_hq)                                                  // laborers: HQ only
-      while (have < need && recruit_to(r, laborers)) { have++; pl++; }
-    if (r == my_hq) { hq_threatened = true; hq_need = need; hq_have = have; }
+    while (have < need && recruit_to(r, mobile)) { have++; ps++; }   // in-time surplus
+    if (r == my_hq)
+      while (have < need && recruit_to(r, laborers)) { have++; pl++; } // in-time laborers
+    bool total_mob = false;
+    if (r == my_hq) {
+      int hq_cap = HQ_LEVELS[hq->level].train_cap;
+      // TOTAL MOBILIZATION: an overwhelming wave at the HQ (outnumbers our whole
+      // army, beyond what one turn's emergency training can patch) -> recall
+      // EVERYTHING reachable home, ignoring arrival time and the `need` cap: all
+      // idle surplus + every laborer off mining. (Units already marching can't be
+      // redirected by the engine, so this grabs all the rest.) HQ must not fall.
+      bool overwhelmed =
+          (need - have) > hq_cap && incoming[r] >= std::max(8, my_army_total);
+      if (overwhelmed) {
+        total_mob = true;
+        auto recall = [&](std::vector<const Warrior *> &pool, int &cnt) {
+          std::vector<const Warrior *> snap = pool;
+          for (const Warrior *w : snap) {
+            if (w->region == r || !reachable(P, w->region, r)) continue;
+            if (issue_move(w, r)) {
+              pool.erase(std::remove(pool.begin(), pool.end(), w), pool.end());
+              have++; cnt++;
+            }
+          }
+        };
+        recall(mobile, ps);
+        recall(laborers, pl);
+      }
+      hq_threatened = true; hq_need = need; hq_have = have;
+    }
 #ifdef DBG_DEF
     if (verbose)
       std::cerr << "T" << turn << " THREAT b=" << r << " incoming=" << incoming[r]
                 << " eta=" << eta[r] << " need=" << need << " have=" << have
-                << " pulled s/l=" << ps << "/" << pl << "\n";
+                << " pulled s/l=" << ps << "/" << pl
+                << (total_mob ? " TOTAL_MOB" : "") << "\n";
 #endif
   }
   for (const Building *b : my_b) { // (B) fill labor
@@ -950,17 +984,25 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
 #endif
       }
     }
-    int total_cap = 0, army = 0;
+    int total_cap = 0, army = 0, opp_army = 0;
     for (const Building *b : my_b) total_cap += b->work_cap();
     for (const auto &w : S.warriors)
-      if (w.id.side == side && w.hp > 0) army++;
+      if (w.hp > 0) (w.id.side == side ? army : opp_army)++;
+    // Match the opponent's production: never let our army cap sit far below
+    // theirs. ARMY_HARD_MAX bounds the O(n^2) combat cost of the lookahead.
+    constexpr int ARMY_HARD_MAX = 60;
+    int cap_army = std::max(std::max(3, total_cap + pol.army_extra),
+                            std::min(opp_army + 4, ARMY_HARD_MAX));
     int income_after = WORK_INCOME * std::min(total_cap, army + 1);
     bool sustainable = income_after - UPKEEP_PER_WARRIOR * (army + 1) >= 0;
-    bool room = army < std::max(3, total_cap + pol.army_extra);
+    bool room = army < cap_army; // cap_army tracks the opponent (see above)
     long long floor = pol.train_reserve + (inflight > 0 ? BASE_BUILD_COST : 0);
-    if (a.train_n == 0 && sustainable && room && budget >= TRAIN_COST + floor) {
-      int n = std::min(HQ_LEVELS[hq->level].train_cap,
-                       (int)((budget - floor) / TRAIN_COST));
+    // Steady production stays solvent (the defense path emergency-trains / total-
+    // mobilizes when actually under attack); cap_army keeps us matching the
+    // opponent as far as our economy can sustain.
+    if (a.train_n == 0 && room && sustainable && budget >= TRAIN_COST + floor) {
+      int n = std::min(cap, (int)((budget - floor) / TRAIN_COST));
+      n = std::min(n, cap_army - army);
       if (n > 0) { a.train_n = n; budget -= (long long)TRAIN_COST * n; }
     }
   }
@@ -1280,11 +1322,14 @@ int main() {
     read_turn_result(S, M, a);
 #ifdef DBG_ECON
     {
-      int army = 0;
+      int army = 0, oarmy = 0, mlvl = 1, olvl = 1;
       for (const auto &w : S.warriors)
-        if (w.id.side == M.my_side) army++;
+        if (w.id.side == M.my_side) army++; else oarmy++;
+      if (const Building *h = building_at(S, M.my_hq)) mlvl = h->level;
+      if (const Building *h = building_at(S, M.opp_hq)) olvl = h->level;
       std::cerr << "T" << turn << " gold=" << S.gold[(int)M.my_side]
-                << " army=" << army << "\n";
+                << " army=" << army << " oarmy=" << oarmy
+                << " hqlvl=" << mlvl << " ohqlvl=" << olvl << "\n";
     }
 #endif
   }
