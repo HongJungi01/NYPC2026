@@ -593,6 +593,31 @@ static long long side_income(const SimState &st, Side s) {
   return inc;
 }
 
+// Per-turn world snapshot: per-region alive counts, total hp/army, and each
+// side's building list. One pass, reused by eval / gen_cmds / the opponent
+// model so the same aggregates aren't recomputed ad hoc.
+struct WorldView {
+  std::vector<int> mine, enemy;     // per-region alive warrior counts (me / opp)
+  double my_hp = 0, opp_hp = 0;     // total alive warrior hp
+  int my_army = 0, opp_army = 0;    // total alive warrior counts
+  std::vector<const Building *> my_b, opp_b;
+};
+static WorldView build_world(const SimState &S, const GameMap &M, Side me) {
+  WorldView w;
+  w.mine.assign(M.N, 0);
+  w.enemy.assign(M.N, 0);
+  for (const auto &wr : S.warriors) {
+    if (wr.hp <= 0) continue;
+    if (wr.id.side == me) { w.mine[wr.region]++; w.my_hp += wr.hp; w.my_army++; }
+    else { w.enemy[wr.region]++; w.opp_hp += wr.hp; w.opp_army++; }
+  }
+  for (const auto &b : S.buildings) {
+    if (b.side == me) w.my_b.push_back(&b);
+    else w.opp_b.push_back(&b);
+  }
+  return w;
+}
+
 // Score the state from `me`'s perspective. Terminal HQ loss dominates; ties at
 // the day-200 horizon fall back to HQ-HP (Rule 4), which `hq_hp` diff encodes.
 static double eval_state(const SimState &st, const GameMap &M, Side me, int turn) {
@@ -609,13 +634,9 @@ static double eval_state(const SimState &st, const GameMap &M, Side me, int turn
   // even at full-horizon draws where the hp *diff* is otherwise zero).
   sc += 15.0 * ((ophq->max_hp_now() - ophq->hp) - (myhq->max_hp_now() - myhq->hp));
 
-  std::vector<int> mine(M.N, 0), enemy(M.N, 0);
-  double myhp = 0, ophp = 0;
-  for (const auto &w : st.warriors) {
-    if (w.hp <= 0) continue;
-    if (w.id.side == me) { mine[w.region]++; myhp += w.hp; }
-    else { enemy[w.region]++; ophp += w.hp; }
-  }
+  WorldView wv = build_world(st, M, me);
+  const std::vector<int> &mine = wv.mine, &enemy = wv.enemy;
+  double myhp = wv.my_hp, ophp = wv.opp_hp;
   sc += 4.0 * (myhp - ophp);
   sc += 1.0 * (side_income(st, me) - side_income(st, opp));
 
@@ -690,15 +711,9 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
   int opp_hq = hq_region_of(M, opposite(side));
   long long budget = S.gold[sv];
 
-  std::vector<int> mine(M.N, 0), enemy(M.N, 0);
-  for (const auto &w : S.warriors) {
-    if (w.hp <= 0) continue;
-    if (w.id.side == side) mine[w.region]++;
-    else enemy[w.region]++;
-  }
-  std::vector<const Building *> my_b;
-  for (const auto &b : S.buildings)
-    if (b.side == side) my_b.push_back(&b);
+  WorldView wv = build_world(S, M, side);
+  std::vector<int> &mine = wv.mine, &enemy = wv.enemy;
+  std::vector<const Building *> &my_b = wv.my_b;
   const Building *hq = building_at(S, my_hq);
   int my_whp = hq ? HQ_LEVELS[hq->level].warrior_hp : HQ_LEVELS[1].warrior_hp;
 
@@ -1030,12 +1045,12 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
                                                 const GameMap &M, const Paths &P) {
   Side opp = opposite(M.my_side);
   long long lane = reachable(P, M.my_hq, M.opp_hq) ? P.dist[M.my_hq][M.opp_hq] : PINF;
-  int opp_bases = 0, opp_army = 0, opp_in_my_half = 0;
-  for (const auto &b : S.buildings)
-    if (b.side == opp && b.type == BType::BASE) opp_bases++;
+  WorldView wv = build_world(S, M, M.my_side);
+  int opp_army = wv.opp_army, opp_bases = 0, opp_in_my_half = 0;
+  for (const Building *b : wv.opp_b)
+    if (b->type == BType::BASE) opp_bases++;
   for (const auto &w : S.warriors) {
     if (w.id.side != opp || w.hp <= 0) continue;
-    opp_army++;
     if (lane < PINF && reachable(P, w.region, M.my_hq) &&
         P.dist[w.region][M.my_hq] < lane / 2)
       opp_in_my_half++;
