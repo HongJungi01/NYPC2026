@@ -1,0 +1,72 @@
+# Logs 폴더 운영 정책
+
+이 폴더는 NEXT NATION 대전 로그를 모으고, 그 패배요인 분석을 바탕으로
+`submission/hybrid.cpp`의 전략매니저를 반복 개선하기 위한 공간이다.
+
+## 1. 목적
+대전 로그(원본) → 사람이 작성한 패배요인 분석 → Claude가 분석을 참조해
+hybrid.cpp 전략을 수정 → 정확성 게이트로 검증, 이 루프를 명문화한다.
+
+## 2. 폴더 구조
+- `VersusPlayer/` : 사람(플레이어) 상대 매치 — **인박스(미반영)**
+- `VersusBot/` : 봇 상대 매치 — **인박스(미반영)**
+- `Reflected/` : hybrid.cpp에 **반영 완료**된 로그를 옮겨두는 아카이브 (평면)
+- `LEDGER.md` : 로그별 반영 상태 대장 (반영 됐는지/안 됐는지 추적)
+- `REGRESSION.md` : 과거 패인 재발 방지용 distilled 체크리스트 + 스윕 카운터
+
+## 3. 파일 규칙
+- `<id>.txt` = referee가 뱉은 **raw 로그** (한 경기). 원본이므로 수정/가공하지 않는다.
+- `<id>.md` = 같은 basename의 **패배요인 분석**. 로그를 보고 **사람이 자유 서술로
+  수기 작성**한다 (형식 강제 없음). 예: `69845_1P.md`.
+- id 관례
+  - VersusPlayer : `<매치id>_<진영>` — 예: `69845_1P`
+  - VersusBot : 일련번호 — 예: `3`, `5`
+- 분석 md가 아직 없는 raw 로그(예: 현재 `VersusBot/3.txt`, `5.txt`)는 "미분석"
+  상태로 둔다.
+
+## 4. 역할 분담
+- **사람** : 로그 판독 → `<id>.md` 패배요인 분석 수기 작성/업로드.
+- **Claude** : 해당 `.md`를 참조 → 구조적/전략적 패인을 hybrid.cpp 수정사항으로
+  번역 → 적용.
+
+## 5. hybrid.cpp 수정 지점 매핑 (분석 결과가 떨어지는 곳 — 참조용)
+- `StrategyManager` §4c — posture / K-day lookahead : [hybrid.cpp:1089](../submission/hybrid.cpp#L1089)
+- `presets` 정책 BALANCED / TURTLE / RUSH / EXPAND : [hybrid.cpp:670](../submission/hybrid.cpp#L670)
+- `gen_cmds` 서브매니저 (Economy → Movement → Military) : §6 영역
+- `eval_state` §4 평가함수 (업글 vs 병력 가중, 승기 판단) : [hybrid.cpp:583](../submission/hybrid.cpp#L583)
+
+예) `69845_1P.md`가 지적한 패인 → 후보 수정 위치
+- "승기에서 회군 / 백도어" → `StrategyManager` (posture), `eval_state` (승기 판단)
+- "업그레이드 우선순위 과다" → Military / Economy 매니저, `presets`
+- "단일 침투를 러쉬로 오판" → `infer_opp_policy` 류 판정, Movement / Military 매니저
+
+## 6. 작업 워크플로우 (루프)
+1. 사람이 `<id>.txt` + `<id>.md` 업로드.
+2. Claude가 `.md`를 읽고 패인을 hybrid.cpp 수정안으로 매핑 (위 5번).
+3. 수정 적용.
+4. 정확성 게이트(SIM_TEST 등)로 회귀 검증.
+   - ⚠️ **지금은 자가대전 승률 튜닝 금지** (다양한 상대 하니스가 없어 오버피팅).
+     시키는 것만 구현 + 정확성 게이트로만 검증한다.
+
+## 7. 로그 생애주기 & 반영 추적
+대전 로그는 hybrid.cpp 반영 여부와 무관하게 계속 쌓인다. 매번 모든 로그를 다시
+참조하는 비효율을 막기 위해, **미반영(인박스)** 과 **반영 완료(아카이브)** 를 물리적으로 분리한다.
+
+- **인박스** = `VersusPlayer/`, `VersusBot/`. 신규 로그는 여기에 `<id>.txt`(+사람이 쓴 `.md`)로 들어온다.
+- **반영 완료 시** (해당 패인을 hybrid.cpp에 반영했을 때):
+  1. `<id>.txt` + `<id>.md` 를 `Reflected/` 로 **이동**한다 (평면, 진영별 하위 없음).
+  2. `LEDGER.md` 의 해당 행을 갱신한다 (반영 = 반영됨, 반영 변경 = 커밋/요약, 위치 = Reflected, 날짜).
+  3. `REGRESSION.md` 에 "패인 → 해결" 한 줄을 추가한다.
+- **신규 로그 처리 시 인박스만 참조**한다. `Reflected/` 아카이브는 매번 재참조하지 않는다
+  → 새 로그가 들어와도 기존 전체를 다시 훑지 않는다.
+- id 충돌 주의: `Reflected/` 는 평면이므로 Player(`69845_1P`)와 Bot(`3`) id가 겹치지 않도록
+  관리한다. 종류 구분은 `LEDGER.md` 의 종류 컬럼으로 본다.
+
+## 8. 주기적 회귀 스윕 (regression sweep)
+반영을 거듭하다 보면 과거 패인이 재발할 수 있다. 매번 전체를 보지는 않되, **주기적으로** 한 번씩 누적 패인을 재점검한다.
+
+- **트리거**: **반영 5회마다 1회**. 카운터는 `REGRESSION.md` 헤더에서 관리한다
+  (`스윕 이후 반영: n/5`). 반영할 때마다 n을 1 올리고, 5에 도달하면 스윕을 실행한 뒤 0으로 리셋한다.
+- **내용**: `REGRESSION.md` 체크리스트의 각 패인이 **현재 hybrid.cpp에서 여전히 방지되는지** 점검한다
+  (필요하면 `Reflected/` 의 원본 `.md` 를 스폿체크). 재발이 의심되면 해당 패인을 다시 반영 대상으로 올린다.
+- **기록**: 스윕 결과(날짜 · 점검한 패인 수 · 재발 여부)를 `LEDGER.md` 하단 "스윕 기록"에 남긴다.

@@ -877,6 +877,20 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
   };
   int my_army_total = 0;
   for (int c : mine) my_army_total += c;
+  // "Winning finish": our force already sitting ON or NEXT TO the enemy HQ
+  // out-masses its garrison + turret -- we win the HQ race, so finishing the kill
+  // beats retreating. Used to (B) keep these units out of the panic recall and
+  // (C) let the assault keep streaming even while our own HQ is threatened.
+  bool winning_finish = false;
+  if (ohq && ohq->side != side) {
+    std::vector<int> ohq_def;
+    for (const auto &w : S.warriors)
+      if (w.hp > 0 && w.id.side != side && w.region == opp_hq) ohq_def.push_back(w.hp);
+    int kill_mass = min_mass_to_take(my_whp, ohq_def, ohq->turret(), 64);
+    int forward = mine[opp_hq];
+    for (int nb : M.adj[opp_hq]) forward += mine[nb];
+    winning_finish = forward > 0 && forward >= kill_mass;
+  }
   std::vector<const Building *> threatened;
   for (const Building *b : my_b)
     if (incoming[b->region] > mine[b->region] + b->turret() &&
@@ -912,6 +926,14 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
           std::vector<const Warrior *> snap = pool;
           for (const Warrior *w : snap) {
             if (w->region == r || !reachable(P, w->region, r)) continue;
+            // B: never recall a winning finish. Units committed to the kill at the
+            // enemy HQ (on it or adjacent) stay and end the game -- pulling them
+            // home to defend a wave we'd outrace throws away a won game (T85).
+            if (winning_finish) {
+              bool fwd = (w->region == opp_hq);
+              for (int nb : M.adj[opp_hq]) if (w->region == nb) fwd = true;
+              if (fwd) continue;
+            }
             if (issue_move(w, r)) {
               pool.erase(std::remove(pool.begin(), pool.end(), w), pool.end());
               have++; cnt++;
@@ -975,6 +997,13 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
   // (The old `enroute < need_mass` throttle left a 40-strong army idle at home
   // and stalled games to a tiebreak loss.)
   bool launch = economy_ok && rallied + enroute >= need_mass;
+  // C: while our HQ faces a wave we can't outrace, hold the army home to defend
+  // instead of bleeding a sub-critical force forward -- a backdoor push when the
+  // long game is won is a blunder (T74). A genuine winning_finish overrides: then
+  // finishing their HQ wins the race, so we keep streaming the assault (see B).
+  // hq_threatened is only set for a real under-defended incoming wave, so normal
+  // aggression (and the 973-976 anti-idle fix) is untouched.
+  if (hq_threatened && !winning_finish) launch = false;
   std::vector<const Warrior *> snap = mobile;
   for (const Warrior *w : snap) {
     if (waiting_to_build(w) || w->region == target) continue;
