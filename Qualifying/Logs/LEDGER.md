@@ -12,6 +12,8 @@
 | 40039_1P Bot3 | Bot | O | 반영됨 | C3 러쉬 빌드업 매칭 (snap 07011214) | Reflected | 2026-07-01 |
 | 40039_1P Bot4 | Bot | O | 반영됨 | C1 수비/공격 병행 + C2 끝내기 판별(resolver) (snap 07011214) | Reflected | 2026-07-01 |
 | 40039_1P Bot5 | Bot | O | 반영됨 | C4 income-dom HQ 업글 + C5 업글<병력 (snap 07011214) | Reflected | 2026-07-01 |
+| 73710_2P | Player | O | 반영됨 | J1 압도 시 채굴병까지 동원해 HQ 마무리 (snap 07011255) | Reflected | 2026-07-01 |
+| 74194_2P | Player | O | 반영됨 | J2 기지 열세=behind(리테이크) + J3 열세 시 업글 금지 (snap 07011255) | Reflected | 2026-07-01 |
 
 ## 스윕 기록 (regression sweep)
 반영 5회마다 1회. 각 스윕의 결과를 한 행씩 남긴다.
