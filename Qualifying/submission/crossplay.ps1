@@ -1,9 +1,9 @@
 <#
   crossplay.ps1 -- record-only cross-match harness (see submission/POLICY.md).
 
-  Plays one snapshot ("New") against every other participant (older snapshots +
-  baselines main/test) over 10 distinct seeds, single game each (the map is
-  point-symmetric, so no side-swap). Writes a summary to Logs/Test/ and raw
+  Plays one snapshot ("New") against every other participant (older snapshots, plus
+  any baseline cpp still present) over 10 distinct seeds, single game each (the map
+  is point-symmetric, so no side-swap). Writes a summary to Logs/Test/ and raw
   referee logs to Logs/Test/raw/.
 
   OBSERVATION ONLY. Results are recorded, never acted on -- do NOT roll back or
@@ -29,10 +29,12 @@ $rawBase = Join-Path $outDir "raw"
 if (-not (Test-Path $ref)) { throw "referee not found: $ref (moved? update `$ref in crossplay.ps1)" }
 $env:PATH = "C:\msys64\ucrt64\bin;" + $env:PATH
 
-# Participants: 8-digit snapshots + baselines main/test (hybrid is retired).
+# Participants: 8-digit snapshots + any baseline that still exists (hybrid retired;
+# main/test were removed by the user -- included only if present).
 $snapshots = Get-ChildItem "$sub\*.cpp" | Where-Object { $_.BaseName -match '^\d{8}$' } |
              ForEach-Object { $_.BaseName } | Sort-Object
-$participants = @($snapshots) + @("main","test")
+$baselines = @("main","test") | Where-Object { Test-Path (Join-Path $sub "$_.cpp") }
+$participants = @($snapshots) + @($baselines)
 if (-not $New) { $New = ($snapshots | Select-Object -Last 1) }
 if (-not $New) { throw "no snapshot found (submission/MMDDHHmm.cpp)" }
 $opponents = $participants | Where-Object { $_ -ne $New }

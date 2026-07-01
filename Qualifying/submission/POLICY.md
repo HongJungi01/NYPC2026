@@ -8,13 +8,15 @@
   새 파일을 만든다. 예: 7월 1일 11:37 → `07011137.cpp`.
 - **HEAD = 가장 최신 스냅샷** = 현재 봇 = **대회 제출 파일**. 다음 변경은 최신 스냅샷을 복사해
   새 스냅샷으로 이어간다(이전 스냅샷은 그대로 둔다).
-- `main.cpp`(mgr5) / `test.cpp`(rush) = **고정 베이스라인** 스파링 상대. 건드리지 않는다.
+- 베이스라인 스파링봇(`main.cpp`=mgr5, `test.cpp`=rush)은 **사용자가 제거**했다. 교차대전 풀은
+  기본적으로 **누적 스냅샷들**이며, `submission/`에 베이스라인 `.cpp`가 있으면 자동 편입한다
+  (harness가 존재하는 것만 상대로 씀 — 나중에 원하는 상대봇을 넣으면 그때부터 포함).
 - `hybrid.cpp` = **동결(retired)**. 과거 작업 파일이며 최신 스냅샷의 조상. 편집하지 않는다.
 - 빌드: `g++ -O2 -std=c++17 <name>.cpp -o <name>.exe` (PowerShell, 필요시
   `$env:PATH = "C:\msys64\ucrt64\bin;" + $env:PATH`). `.exe`는 .gitignore(재생성 가능).
 
 ## 2. 교차대전 테스트 (`crossplay.ps1`)
-- 새 스냅샷을 추가하면 실행: 그 스냅샷("New") vs **다른 모든 참가자**(이전 스냅샷들 + main + test).
+- 새 스냅샷을 추가하면 실행: 그 스냅샷("New") vs **다른 모든 참가자**(이전 스냅샷들 + 있으면 베이스라인).
 - 참가자당 **서로 다른 10개 시드 × 1판**(맵이 점대칭이라 좌우 스왑 불필요).
 - referee: `Seongho/Game_NEXT_NATION_ver1/engine/testing-tool-practice.py`
   (`--seed S -l <log> -a <New.exe> -b <opp.exe>`). New는 항상 LEFT(-a).
