@@ -1,5 +1,13 @@
-# NEXT NATION 대전 raw 로그 (실측 데이터 — 용량 크고 재수집 가능, 추적 제외)
+# Logs 아래 대전 로그 원본 + 분석 산출물(생성물) — 새로 생기는 것 포함 추적 제외
 Logs/**/*.txt
+Logs/**/*.md
+Logs/**/*.json
+
+# 단, 운영 문서는 계속 추적 (업로드되며 git에 유지)
+!Logs/POLICY.md
+!Logs/LEDGER.md
+!Logs/REGRESSION.md
+!Logs/LlmAnalyzer/POLICY.md
 
 # 로컬 머신 전용 설정 (권한 등)
 .claude/settings.local.json
