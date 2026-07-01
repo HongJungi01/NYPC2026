@@ -3,7 +3,7 @@
 반영 완료된 패인을 distilled 형태로 누적한다. 주기적 회귀 스윕은 **원본 로그 전체 대신 이 표**를
 훑어, 각 패인이 현재 hybrid.cpp에서 여전히 방지되는지 확인한다. 규칙은 [POLICY.md](POLICY.md) §8 참조.
 
-**스윕 카운터** — 마지막 스윕: (없음) · 스윕 이후 반영: **4/5**
+**스윕 카운터** — 마지막 스윕: 2026-07-01 (#1~#4 재발 없음) · 스윕 이후 반영: **0/5**
 > 패인을 1건 반영할 때마다 n을 1 올린다. 5에 도달하면 스윕을 실행하고 0으로 리셋한다.
 
 | # | 패인 요약 | 출처 로그 | hybrid.cpp 수정 위치/커밋 | 스윕 점검 포인트 |
@@ -12,3 +12,6 @@
 | 2 | 위협 시 백도어: HQ가 못 막을 파도에 직면했는데 sub-critical 병력을 적 HQ로 흘림 (T74) | 69845_1P | `gen_cmds` launch 게이트 — `hq_threatened && !winning_finish → launch=false` | HQ 피습 중 `winning_finish` 아니면 신규 공격을 안 흘리고 전방 거점에 묶이는지 |
 | 3 | 유휴 골드: 안전한데 골드를 쌓아두고 4턴간 아무것도 안 함(빈 커맨드 블록) → 물자 사장 (T73-76) | 37881 Bot5_1P | `gen_cmds` MilitaryManager no-idle 폴백 — `!hq_threatened && budget>TRAIN_COST+600` 면 paced cap 넘겨 병력 생산(예비 600) | 안전+골드 600 초과 시 빈 커맨드 없이 병력/업글로 전환되는지 |
 | 4 | 거점 미타격·산만: 항상 HQ만 노려 물자를 압박으로 못 바꾸고 산개 → 장기전 패배 (T186 HQ 함락) | 37881 Bot5_1P | `gen_cmds` 공격 타겟 = 가장 가까운 적 거점 우선, HQ는 최종; `safe_mass`=max(attack_mass, resolver, 4·(def+turret)) | 적 거점이 있으면 HQ보다 거점을 먼저 노리는지 · 커밋이 4:1(resolver 바닥) 충족 시에만인지 |
+| 5 | 러쉬 무대응: 상대 연속생산(러쉬)에 페이싱이 생산을 지연·뱅킹 → 러쉬 도착 시 병력 부족, HQ 함락 (Bot3 T76) | 38335_1P Bot3 | `gen_cmds` 생산: `opp_adv>=4`(우리 절반 진격 적)면 `rush`, `needed_now=parity`로 지연 없이 즉시 매칭 | 러쉬 감지 시 `needed_now`가 paced식 대신 parity가 되는지 · 상한 ARMY_HARD_MAX 유지 |
+| 6 | 못 끝냄: 항상 거점만/무한 대기로 게임을 못 닫음 → 턴리밋 타이브레이크 패 (Bot4 T200) | 38335_1P Bot4 | `gen_cmds` I-b: `attack_force >= safe_mass(opp_hq)`면 `target=opp_hq`(끝내기 우선); HQ 커밋 **5:1**(I-c), 거점 4:1 | HQ 5:1 충족 시 거점 대신 HQ를 노리는지 · `safe_mass(opp_hq)` ratio=5인지 |
+| 7 | 조기 병력 과투자: HQ+거점2개 전에 병력부터 뽑아 경제·확장 지연 | 38335_1P Bot4 | `gen_cmds` I-a: `econ_open = my_b.size()>=3 || hq_threatened || rush` 아니면 정기 train·no-idle 차단 | 건물<3·비위협·비러쉬면 정기 생산이 멈추고 확장에 투자되는지 · 위협/러쉬 오버라이드 되는지 |

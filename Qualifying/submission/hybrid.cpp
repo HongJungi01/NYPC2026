@@ -981,6 +981,9 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
   // over the target's garrison+turret (resolver-floored) so we finish cleanly;
   // the HQ is the final target -- reached once the bases are gone or we hold an
   // overwhelming 4:1 there.
+  // Safe commit mass for a target: 4:1 over garrison+turret for a base, 5:1 for
+  // the HQ (analysis 38335 Bot4 refines 37881's 4:1 for the game-ending hit),
+  // floored by the exact resolver and the policy minimum.
   auto safe_mass = [&](int region) -> int {
     const Building *b = building_at(S, region);
     std::vector<int> dh;
@@ -988,16 +991,26 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
       if (w.hp > 0 && w.region == region && w.id.side != side) dh.push_back(w.hp);
     int tr = (b && b->side != side) ? b->turret() : 0;
     int resolver = min_mass_to_take(my_whp, dh, tr, 60);
-    return std::max({pol.attack_mass, resolver, 4 * ((int)dh.size() + tr)});
+    int ratio = (region == opp_hq) ? 5 : 4;
+    return std::max({pol.attack_mass, resolver, ratio * ((int)dh.size() + tr)});
   };
-  // Prefer the nearest still-standing enemy base (reachable from the front);
-  // fall back to the HQ when no base is left.
+  // I-b (Bot4): if our attack-capable force can already END the game at the HQ
+  // (5:1), aim there -- don't dawdle on bases. Otherwise chip the nearest
+  // still-standing enemy base (F); the HQ is the fallback when none remain.
+  int attack_force = (int)mobile.size();
+  for (const auto &w : S.warriors) {
+    if (w.id.side != side || w.hp <= 0 || w.state != WState::MOVING) continue;
+    const Building *tb = building_at(S, w.target);
+    if (!tb || tb->side != side) attack_force++; // marching on enemy/neutral ground
+  }
   int target = opp_hq;
-  long long tbest = PINF;
-  for (const Building *b : wv.opp_b) {
-    if (b->type != BType::BASE || !reachable(P, rally, b->region)) continue;
-    long long d = P.dist[rally][b->region];
-    if (d < tbest) { tbest = d; target = b->region; }
+  if (attack_force < safe_mass(opp_hq)) {
+    long long tbest = PINF;
+    for (const Building *b : wv.opp_b) {
+      if (b->type != BType::BASE || !reachable(P, rally, b->region)) continue;
+      long long d = P.dist[rally][b->region];
+      if (d < tbest) { tbest = d; target = b->region; }
+    }
   }
   int need_mass = safe_mass(target);
   int enroute = 0;
@@ -1059,8 +1072,18 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
     long long t_arr = (eta[my_hq] < PINF) ? eta[my_hq] : lane;
     int parity = std::min(opp_army + 4, ARMY_HARD_MAX);       // don't fall behind
     int econ_floor = std::max(3, total_cap + pol.army_extra); // economy baseline
+    // H (analysis 38335 Bot3): rush awareness. If the opponent is massing into our
+    // half, drop the paced delay and produce to full parity NOW -- the pacing below
+    // banks gold assuming we can catch up by their arrival, which loses to a rush.
+    int opp_adv = 0;
+    for (const auto &w : S.warriors)
+      if (w.id.side != side && w.hp > 0 && lane < PINF &&
+          reachable(P, w.region, my_hq) && P.dist[w.region][my_hq] < lane / 2)
+        opp_adv++;
+    bool rush = opp_adv >= 4;
     int needed_now = (t_arr >= PINF)
                          ? econ_floor // opp unreachable by land -> no army threat
+                     : rush ? parity // rush incoming -> match parity immediately
                          : parity - cap * (int)std::min<long long>(t_arr, parity);
     int cap_army = std::max(econ_floor, needed_now);
     int income_after = WORK_INCOME * std::min(total_cap, army + 1);
@@ -1070,7 +1093,12 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
     // Steady production stays solvent (the defense path emergency-trains / total-
     // mobilizes when actually under attack); cap_army keeps us matching the
     // opponent as far as our economy can sustain.
-    if (a.train_n == 0 && room && sustainable && budget >= TRAIN_COST + floor) {
+    // I-a (Bot4): economy-first opening -- no steady production until we hold the
+    // HQ + 2 bases (>=3 buildings), so early gold buys expansion, not a standing
+    // army. A real threat or a detected rush overrides (H / emergency train below).
+    bool econ_open = my_b.size() >= 3 || hq_threatened || rush;
+    if (a.train_n == 0 && room && sustainable && econ_open &&
+        budget >= TRAIN_COST + floor) {
       int n = std::min(cap, (int)((budget - floor) / TRAIN_COST));
       n = std::min(n, cap_army - army);
       if (n > 0) { a.train_n = n; budget -= (long long)TRAIN_COST * n; }
@@ -1082,7 +1110,7 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
     // army (beyond the paced cap) to PRESS the lead -- it feeds the base-chip
     // attack above. Bounded: spend down to the reserve, train_cap/turn, <= hard max.
     constexpr long long IDLE_GOLD = 600;
-    if (a.train_n == 0 && !hq_threatened && enemy[my_hq] == 0 &&
+    if (a.train_n == 0 && !hq_threatened && enemy[my_hq] == 0 && econ_open &&
         army < ARMY_HARD_MAX && budget >= TRAIN_COST + IDLE_GOLD) {
       int n = std::min(cap, (int)((budget - IDLE_GOLD) / TRAIN_COST));
       n = std::min(n, ARMY_HARD_MAX - army);
