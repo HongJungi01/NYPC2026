@@ -1,0 +1,8 @@
+# NEXT NATION 대전 raw 로그 (실측 데이터 — 용량 크고 재수집 가능, 추적 제외)
+Logs/**/*.txt
+
+# 로컬 머신 전용 설정 (권한 등)
+.claude/settings.local.json
+
+# 빌드 산출물
+*.exe

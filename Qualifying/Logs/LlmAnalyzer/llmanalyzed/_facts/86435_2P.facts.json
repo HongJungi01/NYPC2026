@@ -1,0 +1,10929 @@
+{
+ "basename": "86435_2P",
+ "n": 51,
+ "k": 9,
+ "hq_region": {
+  "A": 0,
+  "B": 50
+ },
+ "result": {
+  "outcome": "LEFT_WIN",
+  "reason": "HQ_DESTROYED",
+  "raw": "RESULT LEFT_WIN HQ_DESTROYED"
+ },
+ "per_turn": [
+  {
+   "turn": 1,
+   "A": {
+    "gold": 489,
+    "alive": 3,
+    "buildings": 1,
+    "levels": [
+     1
+    ],
+    "income": 15,
+    "spend_move": 20,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 499,
+    "alive": 3,
+    "buildings": 1,
+    "levels": [
+     1
+    ],
+    "income": 15,
+    "spend_move": 10,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 2,
+   "A": {
+    "gold": 213,
+    "alive": 3,
+    "buildings": 2,
+    "levels": [
+     1,
+     1
+    ],
+    "income": 30,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 300,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 223,
+    "alive": 3,
+    "buildings": 2,
+    "levels": [
+     1,
+     1
+    ],
+    "income": 30,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 300,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 3,
+   "A": {
+    "gold": 237,
+    "alive": 3,
+    "buildings": 2,
+    "levels": [
+     1,
+     1
+    ],
+    "income": 30,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 237,
+    "alive": 3,
+    "buildings": 2,
+    "levels": [
+     1,
+     1
+    ],
+    "income": 30,
+    "spend_move": 10,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 4,
+   "A": {
+    "gold": 261,
+    "alive": 3,
+    "buildings": 2,
+    "levels": [
+     1,
+     1
+    ],
+    "income": 30,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 261,
+    "alive": 3,
+    "buildings": 2,
+    "levels": [
+     1,
+     1
+    ],
+    "income": 30,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 5,
+   "A": {
+    "gold": 285,
+    "alive": 3,
+    "buildings": 2,
+    "levels": [
+     1,
+     1
+    ],
+    "income": 30,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 285,
+    "alive": 3,
+    "buildings": 2,
+    "levels": [
+     1,
+     1
+    ],
+    "income": 30,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 6,
+   "A": {
+    "gold": 309,
+    "alive": 3,
+    "buildings": 2,
+    "levels": [
+     1,
+     1
+    ],
+    "income": 30,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 309,
+    "alive": 3,
+    "buildings": 2,
+    "levels": [
+     1,
+     1
+    ],
+    "income": 30,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 7,
+   "A": {
+    "gold": 48,
+    "alive": 3,
+    "buildings": 3,
+    "levels": [
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 300,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 48,
+    "alive": 3,
+    "buildings": 3,
+    "levels": [
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 300,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 8,
+   "A": {
+    "gold": 87,
+    "alive": 3,
+    "buildings": 3,
+    "levels": [
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 87,
+    "alive": 3,
+    "buildings": 3,
+    "levels": [
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 9,
+   "A": {
+    "gold": 126,
+    "alive": 3,
+    "buildings": 3,
+    "levels": [
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 126,
+    "alive": 3,
+    "buildings": 3,
+    "levels": [
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 10,
+   "A": {
+    "gold": 165,
+    "alive": 3,
+    "buildings": 3,
+    "levels": [
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 165,
+    "alive": 3,
+    "buildings": 3,
+    "levels": [
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 11,
+   "A": {
+    "gold": 204,
+    "alive": 3,
+    "buildings": 3,
+    "levels": [
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 204,
+    "alive": 3,
+    "buildings": 3,
+    "levels": [
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 12,
+   "A": {
+    "gold": 243,
+    "alive": 3,
+    "buildings": 3,
+    "levels": [
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 121,
+    "alive": 4,
+    "buildings": 3,
+    "levels": [
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 8,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 13,
+   "A": {
+    "gold": 282,
+    "alive": 3,
+    "buildings": 3,
+    "levels": [
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 148,
+    "alive": 4,
+    "buildings": 3,
+    "levels": [
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 10,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 8,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 14,
+   "A": {
+    "gold": 321,
+    "alive": 3,
+    "buildings": 3,
+    "levels": [
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 185,
+    "alive": 4,
+    "buildings": 3,
+    "levels": [
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 8,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 15,
+   "A": {
+    "gold": 360,
+    "alive": 3,
+    "buildings": 3,
+    "levels": [
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 222,
+    "alive": 4,
+    "buildings": 3,
+    "levels": [
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 8,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 16,
+   "A": {
+    "gold": 399,
+    "alive": 3,
+    "buildings": 3,
+    "levels": [
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 259,
+    "alive": 4,
+    "buildings": 3,
+    "levels": [
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 8,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 17,
+   "A": {
+    "gold": 438,
+    "alive": 3,
+    "buildings": 3,
+    "levels": [
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 6,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 296,
+    "alive": 4,
+    "buildings": 3,
+    "levels": [
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 8,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 18,
+   "A": {
+    "gold": 355,
+    "alive": 4,
+    "buildings": 3,
+    "levels": [
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 8,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": 333,
+    "alive": 4,
+    "buildings": 3,
+    "levels": [
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 8,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 19,
+   "A": {
+    "gold": 382,
+    "alive": 4,
+    "buildings": 3,
+    "levels": [
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 10,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 8,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 85,
+    "alive": 4,
+    "buildings": 4,
+    "levels": [
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 60,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 300,
+    "upkeep": 8,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 20,
+   "A": {
+    "gold": 419,
+    "alive": 4,
+    "buildings": 3,
+    "levels": [
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 8,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 137,
+    "alive": 4,
+    "buildings": 4,
+    "levels": [
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 60,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 8,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 21,
+   "A": {
+    "gold": 171,
+    "alive": 4,
+    "buildings": 4,
+    "levels": [
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 60,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 300,
+    "upkeep": 8,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 67,
+    "alive": 5,
+    "buildings": 4,
+    "levels": [
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 60,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 10,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 22,
+   "A": {
+    "gold": 223,
+    "alive": 4,
+    "buildings": 4,
+    "levels": [
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 60,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 8,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 107,
+    "alive": 5,
+    "buildings": 4,
+    "levels": [
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 60,
+    "spend_move": 10,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 10,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 23,
+   "A": {
+    "gold": 275,
+    "alive": 4,
+    "buildings": 4,
+    "levels": [
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 60,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 8,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 157,
+    "alive": 5,
+    "buildings": 4,
+    "levels": [
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 60,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 10,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 24,
+   "A": {
+    "gold": 327,
+    "alive": 4,
+    "buildings": 4,
+    "levels": [
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 60,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 8,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 207,
+    "alive": 5,
+    "buildings": 4,
+    "levels": [
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 60,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 10,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 25,
+   "A": {
+    "gold": 379,
+    "alive": 4,
+    "buildings": 4,
+    "levels": [
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 60,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 8,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 257,
+    "alive": 5,
+    "buildings": 4,
+    "levels": [
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 60,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 10,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 26,
+   "A": {
+    "gold": 431,
+    "alive": 4,
+    "buildings": 4,
+    "levels": [
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 60,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 8,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 307,
+    "alive": 5,
+    "buildings": 4,
+    "levels": [
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 60,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 10,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 27,
+   "A": {
+    "gold": 361,
+    "alive": 5,
+    "buildings": 4,
+    "levels": [
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 60,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 10,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": 72,
+    "alive": 5,
+    "buildings": 5,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 300,
+    "upkeep": 10,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 28,
+   "A": {
+    "gold": 401,
+    "alive": 5,
+    "buildings": 4,
+    "levels": [
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 60,
+    "spend_move": 10,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 10,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 137,
+    "alive": 5,
+    "buildings": 5,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 10,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 29,
+   "A": {
+    "gold": 451,
+    "alive": 5,
+    "buildings": 4,
+    "levels": [
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 60,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 10,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 202,
+    "alive": 5,
+    "buildings": 5,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 10,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 30,
+   "A": {
+    "gold": 379,
+    "alive": 6,
+    "buildings": 4,
+    "levels": [
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 60,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 12,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": 145,
+    "alive": 6,
+    "buildings": 5,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 12,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 31,
+   "A": {
+    "gold": 142,
+    "alive": 6,
+    "buildings": 5,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 300,
+    "upkeep": 12,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 198,
+    "alive": 6,
+    "buildings": 5,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 10,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 12,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 32,
+   "A": {
+    "gold": 205,
+    "alive": 6,
+    "buildings": 5,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 12,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 261,
+    "alive": 6,
+    "buildings": 5,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 12,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 33,
+   "A": {
+    "gold": 268,
+    "alive": 6,
+    "buildings": 5,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 12,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 324,
+    "alive": 6,
+    "buildings": 5,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 12,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 34,
+   "A": {
+    "gold": 331,
+    "alive": 6,
+    "buildings": 5,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 12,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 387,
+    "alive": 6,
+    "buildings": 5,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 12,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 35,
+   "A": {
+    "gold": 384,
+    "alive": 6,
+    "buildings": 5,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 10,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 12,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 450,
+    "alive": 6,
+    "buildings": 5,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 12,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 36,
+   "A": {
+    "gold": 447,
+    "alive": 6,
+    "buildings": 5,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 12,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 228,
+    "alive": 6,
+    "buildings": 6,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 300,
+    "upkeep": 12,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 37,
+   "A": {
+    "gold": 510,
+    "alive": 6,
+    "buildings": 5,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 12,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 184,
+    "alive": 7,
+    "buildings": 6,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 14,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 38,
+   "A": {
+    "gold": 573,
+    "alive": 6,
+    "buildings": 5,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 12,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 138,
+    "alive": 8,
+    "buildings": 6,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 16,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 39,
+   "A": {
+    "gold": 638,
+    "alive": 5,
+    "buildings": 5,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 10,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 90,
+    "alive": 9,
+    "buildings": 6,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 18,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 40,
+   "A": {
+    "gold": 103,
+    "alive": 5,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 600,
+    "upkeep": 10,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 162,
+    "alive": 9,
+    "buildings": 6,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 18,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 41,
+   "A": {
+    "gold": 168,
+    "alive": 5,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 10,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 234,
+    "alive": 9,
+    "buildings": 6,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 18,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 42,
+   "A": {
+    "gold": 233,
+    "alive": 5,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 10,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 306,
+    "alive": 9,
+    "buildings": 6,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 18,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 43,
+   "A": {
+    "gold": 298,
+    "alive": 5,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 10,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 378,
+    "alive": 9,
+    "buildings": 6,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 18,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 44,
+   "A": {
+    "gold": 363,
+    "alive": 5,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 10,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 450,
+    "alive": 9,
+    "buildings": 6,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 18,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 45,
+   "A": {
+    "gold": 428,
+    "alive": 5,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 10,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 522,
+    "alive": 9,
+    "buildings": 6,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 18,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 46,
+   "A": {
+    "gold": 386,
+    "alive": 6,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 12,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": 594,
+    "alive": 9,
+    "buildings": 6,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 18,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 47,
+   "A": {
+    "gold": 464,
+    "alive": 6,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 12,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 666,
+    "alive": 9,
+    "buildings": 6,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 18,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 48,
+   "A": {
+    "gold": 420,
+    "alive": 7,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 14,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": 616,
+    "alive": 10,
+    "buildings": 6,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 20,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 49,
+   "A": {
+    "gold": 374,
+    "alive": 8,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 16,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": 686,
+    "alive": 10,
+    "buildings": 6,
+    "levels": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 20,
+    "hq_hp": 10,
+    "hq_level": 1,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 50,
+   "A": {
+    "gold": 448,
+    "alive": 8,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 16,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 156,
+    "alive": 10,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 600,
+    "upkeep": 20,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 51,
+   "A": {
+    "gold": 400,
+    "alive": 9,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 18,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": 226,
+    "alive": 10,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 20,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 1,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 52,
+   "A": {
+    "gold": 472,
+    "alive": 9,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 18,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 189,
+    "alive": 11,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 22,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 1,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 53,
+   "A": {
+    "gold": 422,
+    "alive": 10,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 20,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": 272,
+    "alive": 11,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 22,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 54,
+   "A": {
+    "gold": 370,
+    "alive": 11,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 22,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": 233,
+    "alive": 12,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 24,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 55,
+   "A": {
+    "gold": 398,
+    "alive": 11,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 40,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 22,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 4,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 192,
+    "alive": 13,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 26,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 56,
+   "A": {
+    "gold": 466,
+    "alive": 11,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 22,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 149,
+    "alive": 14,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 57,
+   "A": {
+    "gold": 412,
+    "alive": 12,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 24,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": 226,
+    "alive": 14,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 58,
+   "A": {
+    "gold": 478,
+    "alive": 12,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 24,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 181,
+    "alive": 15,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 59,
+   "A": {
+    "gold": 424,
+    "alive": 12,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 24,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": 121,
+    "alive": 15,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 60,
+   "A": {
+    "gold": 480,
+    "alive": 12,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 10,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 24,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 181,
+    "alive": 15,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 61,
+   "A": {
+    "gold": 414,
+    "alive": 13,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 10,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 26,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": 119,
+    "alive": 16,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 32,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 62,
+   "A": {
+    "gold": 193,
+    "alive": 13,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 300,
+    "upkeep": 26,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 177,
+    "alive": 16,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 32,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 63,
+   "A": {
+    "gold": 150,
+    "alive": 14,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": 235,
+    "alive": 16,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 32,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 64,
+   "A": {
+    "gold": 227,
+    "alive": 14,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 297,
+    "alive": 14,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 65,
+   "A": {
+    "gold": 304,
+    "alive": 14,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 359,
+    "alive": 14,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 66,
+   "A": {
+    "gold": 381,
+    "alive": 14,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 421,
+    "alive": 14,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 67,
+   "A": {
+    "gold": 428,
+    "alive": 14,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 30,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 3,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 281,
+    "alive": 15,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 80,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 8,
+    "rally_home": 0,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 68,
+   "A": {
+    "gold": 325,
+    "alive": 14,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 5,
+    "rally_home": 4,
+    "trained": 1
+   },
+   "B": {
+    "gold": 219,
+    "alive": 16,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 32,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 69,
+   "A": {
+    "gold": 220,
+    "alive": 15,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 4,
+    "rally_home": 2,
+    "trained": 1
+   },
+   "B": {
+    "gold": 264,
+    "alive": 15,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 70,
+   "A": {
+    "gold": 250,
+    "alive": 15,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 60,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 309,
+    "alive": 15,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 4,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 71,
+   "A": {
+    "gold": 295,
+    "alive": 15,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 69,
+    "alive": 15,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 300,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 3,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 72,
+   "A": {
+    "gold": 355,
+    "alive": 15,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 129,
+    "alive": 15,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 3,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 73,
+   "A": {
+    "gold": 365,
+    "alive": 15,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 50,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 5,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 191,
+    "alive": 14,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 3,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 74,
+   "A": {
+    "gold": 425,
+    "alive": 15,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 131,
+    "alive": 15,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 75,
+   "A": {
+    "gold": 367,
+    "alive": 14,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": 208,
+    "alive": 14,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 76,
+   "A": {
+    "gold": 429,
+    "alive": 14,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 285,
+    "alive": 14,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 77,
+   "A": {
+    "gold": 371,
+    "alive": 14,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": 242,
+    "alive": 14,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 78,
+   "A": {
+    "gold": 433,
+    "alive": 14,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 199,
+    "alive": 14,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 79,
+   "A": {
+    "gold": 373,
+    "alive": 15,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": 154,
+    "alive": 15,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 3,
+    "rally_home": 0,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 80,
+   "A": {
+    "gold": 435,
+    "alive": 14,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 231,
+    "alive": 14,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 3,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 81,
+   "A": {
+    "gold": 345,
+    "alive": 15,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 60,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 3,
+    "rally_home": 2,
+    "trained": 1
+   },
+   "B": {
+    "gold": 173,
+    "alive": 14,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 82,
+   "A": {
+    "gold": 375,
+    "alive": 15,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 60,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 235,
+    "alive": 14,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 3,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 83,
+   "A": {
+    "gold": 380,
+    "alive": 15,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 40,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 5,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 190,
+    "alive": 15,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 3,
+    "rally_home": 0,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 84,
+   "A": {
+    "gold": 440,
+    "alive": 15,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 265,
+    "alive": 15,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 85,
+   "A": {
+    "gold": 363,
+    "alive": 16,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 32,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": 340,
+    "alive": 15,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 3,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 86,
+   "A": {
+    "gold": 421,
+    "alive": 16,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 32,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 1,
+    "trained": 0
+   },
+   "B": {
+    "gold": 280,
+    "alive": 15,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 87,
+   "A": {
+    "gold": 459,
+    "alive": 16,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 20,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 32,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 340,
+    "alive": 15,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 88,
+   "A": {
+    "gold": 395,
+    "alive": 17,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 34,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 4,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": 400,
+    "alive": 15,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 89,
+   "A": {
+    "gold": 451,
+    "alive": 17,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 34,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": -110,
+    "alive": 15,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 600,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 90,
+   "A": {
+    "gold": 387,
+    "alive": 17,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 34,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": -20,
+    "alive": 15,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 91,
+   "A": {
+    "gold": 383,
+    "alive": 17,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 60,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 34,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 7,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": -50,
+    "alive": 15,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 3,
+    "rally_home": 0,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 92,
+   "A": {
+    "gold": 439,
+    "alive": 17,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 34,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 10,
+    "alive": 15,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 93,
+   "A": {
+    "gold": 365,
+    "alive": 17,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 10,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 34,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": -20,
+    "alive": 15,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 94,
+   "A": {
+    "gold": 421,
+    "alive": 17,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 34,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 40,
+    "alive": 15,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 95,
+   "A": {
+    "gold": 355,
+    "alive": 18,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 36,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": 102,
+    "alive": 14,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 96,
+   "A": {
+    "gold": 409,
+    "alive": 18,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 36,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 3,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 166,
+    "alive": 13,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 26,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 97,
+   "A": {
+    "gold": 178,
+    "alive": 18,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 300,
+    "upkeep": 36,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 108,
+    "alive": 14,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 98,
+   "A": {
+    "gold": 232,
+    "alive": 18,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 36,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 4,
+    "rally_home": 1,
+    "trained": 0
+   },
+   "B": {
+    "gold": 48,
+    "alive": 15,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 3,
+    "rally_home": 0,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 99,
+   "A": {
+    "gold": 286,
+    "alive": 18,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 36,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 4,
+    "rally_home": 2,
+    "trained": 0
+   },
+   "B": {
+    "gold": 0,
+    "alive": 16,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 18,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 4,
+    "rally_home": 0,
+    "trained": 1
+   }
+  },
+  {
+   "turn": 100,
+   "A": {
+    "gold": 357,
+    "alive": 17,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 34,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": 8,
+    "alive": 16,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 50,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 32,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 7,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 101,
+   "A": {
+    "gold": 400,
+    "alive": 16,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 32,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 9,
+    "rally_home": 3,
+    "trained": 0
+   },
+   "B": {
+    "gold": -82,
+    "alive": 15,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 90,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 9,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 102,
+   "A": {
+    "gold": 306,
+    "alive": 17,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 60,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 34,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 3,
+    "rally_home": 2,
+    "trained": 1
+   },
+   "B": {
+    "gold": -67,
+    "alive": 14,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 15,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 103,
+   "A": {
+    "gold": 336,
+    "alive": 15,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 60,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 1,
+    "trained": 0
+   },
+   "B": {
+    "gold": -37,
+    "alive": 14,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 30,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 104,
+   "A": {
+    "gold": 231,
+    "alive": 15,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 1,
+    "trained": 1
+   },
+   "B": {
+    "gold": -32,
+    "alive": 12,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 15,
+    "spend_move": 10,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 105,
+   "A": {
+    "gold": 160,
+    "alive": 13,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 26,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": -67,
+    "alive": 10,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 15,
+    "spend_move": 50,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 5,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 106,
+   "A": {
+    "gold": 76,
+    "alive": 12,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 60,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 24,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 1,
+    "trained": 1
+   },
+   "B": {
+    "gold": -67,
+    "alive": 7,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 107,
+   "A": {
+    "gold": 116,
+    "alive": 10,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 60,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 20,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 3,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": -67,
+    "alive": 4,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 6,
+    "rally_home": 2,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 108,
+   "A": {
+    "gold": 173,
+    "alive": 9,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 75,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 18,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": -67,
+    "alive": 1,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 109,
+   "A": {
+    "gold": 123,
+    "alive": 10,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 20,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": -67,
+    "alive": 0,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 110,
+   "A": {
+    "gold": 193,
+    "alive": 10,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 20,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": -67,
+    "alive": 0,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 111,
+   "A": {
+    "gold": 263,
+    "alive": 10,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 90,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 20,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": -67,
+    "alive": 0,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 112,
+   "A": {
+    "gold": 348,
+    "alive": 10,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 20,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": -67,
+    "alive": 0,
+    "buildings": 5,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 113,
+   "A": {
+    "gold": 433,
+    "alive": 10,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 20,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": -67,
+    "alive": 0,
+    "buildings": 4,
+    "levels": [
+     2,
+     1,
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 114,
+   "A": {
+    "gold": -62,
+    "alive": 10,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 600,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": -67,
+    "alive": 0,
+    "buildings": 4,
+    "levels": [
+     2,
+     1,
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 115,
+   "A": {
+    "gold": 23,
+    "alive": 10,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 20,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": -67,
+    "alive": 0,
+    "buildings": 4,
+    "levels": [
+     2,
+     1,
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 116,
+   "A": {
+    "gold": 108,
+    "alive": 10,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 20,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": -67,
+    "alive": 0,
+    "buildings": 4,
+    "levels": [
+     2,
+     1,
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 117,
+   "A": {
+    "gold": 173,
+    "alive": 10,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 20,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 20,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": -67,
+    "alive": 0,
+    "buildings": 4,
+    "levels": [
+     2,
+     1,
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 118,
+   "A": {
+    "gold": 136,
+    "alive": 11,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 22,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": -67,
+    "alive": 0,
+    "buildings": 4,
+    "levels": [
+     2,
+     1,
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 119,
+   "A": {
+    "gold": 97,
+    "alive": 12,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 24,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": -67,
+    "alive": 0,
+    "buildings": 4,
+    "levels": [
+     2,
+     1,
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 120,
+   "A": {
+    "gold": 56,
+    "alive": 13,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 26,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": -67,
+    "alive": 0,
+    "buildings": 4,
+    "levels": [
+     2,
+     1,
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 121,
+   "A": {
+    "gold": 125,
+    "alive": 13,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 10,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 26,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 2,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": -67,
+    "alive": 0,
+    "buildings": 4,
+    "levels": [
+     2,
+     1,
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 122,
+   "A": {
+    "gold": 72,
+    "alive": 14,
+    "buildings": 6,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 105,
+    "spend_move": 10,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": -67,
+    "alive": 0,
+    "buildings": 3,
+    "levels": [
+     2,
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 123,
+   "A": {
+    "gold": -108,
+    "alive": 14,
+    "buildings": 7,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 120,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 300,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 3,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": -67,
+    "alive": 0,
+    "buildings": 3,
+    "levels": [
+     2,
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 124,
+   "A": {
+    "gold": 0,
+    "alive": 14,
+    "buildings": 7,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 120,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 12,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": -67,
+    "alive": 0,
+    "buildings": 3,
+    "levels": [
+     2,
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 125,
+   "A": {
+    "gold": 92,
+    "alive": 14,
+    "buildings": 7,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 120,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": -67,
+    "alive": 0,
+    "buildings": 3,
+    "levels": [
+     2,
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 126,
+   "A": {
+    "gold": 134,
+    "alive": 14,
+    "buildings": 7,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 120,
+    "spend_move": 50,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 28,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 5,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": -67,
+    "alive": 0,
+    "buildings": 3,
+    "levels": [
+     2,
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 127,
+   "A": {
+    "gold": 104,
+    "alive": 15,
+    "buildings": 7,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 120,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": -67,
+    "alive": 0,
+    "buildings": 3,
+    "levels": [
+     2,
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 128,
+   "A": {
+    "gold": 72,
+    "alive": 16,
+    "buildings": 7,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 120,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 32,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": -67,
+    "alive": 0,
+    "buildings": 3,
+    "levels": [
+     2,
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 129,
+   "A": {
+    "gold": 38,
+    "alive": 17,
+    "buildings": 7,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 120,
+    "spend_move": 0,
+    "spend_train": 120,
+    "spend_upgrade": 0,
+    "upkeep": 34,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 1
+   },
+   "B": {
+    "gold": -67,
+    "alive": 0,
+    "buildings": 3,
+    "levels": [
+     2,
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 130,
+   "A": {
+    "gold": -22,
+    "alive": 17,
+    "buildings": 7,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 30,
+    "spend_move": 90,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 11,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": -67,
+    "alive": 0,
+    "buildings": 3,
+    "levels": [
+     2,
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 10,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 131,
+   "A": {
+    "gold": 1,
+    "alive": 17,
+    "buildings": 7,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 45,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 22,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 1,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": -67,
+    "alive": 0,
+    "buildings": 3,
+    "levels": [
+     2,
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 4,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  },
+  {
+   "turn": 132,
+   "A": {
+    "gold": 1,
+    "alive": 16,
+    "buildings": 7,
+    "levels": [
+     2,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "income": 30,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 30,
+    "hq_hp": 15,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   },
+   "B": {
+    "gold": -67,
+    "alive": 0,
+    "buildings": 2,
+    "levels": [
+     1,
+     1
+    ],
+    "income": 0,
+    "spend_move": 0,
+    "spend_train": 0,
+    "spend_upgrade": 0,
+    "upkeep": 0,
+    "hq_hp": 0,
+    "hq_level": 2,
+    "new_moves": 0,
+    "rally_home": 0,
+    "trained": 0
+   }
+  }
+ ],
+ "timings": {
+  "A": {
+   "first_move": 1,
+   "first_base": 2,
+   "first_upgrade": 2,
+   "first_train": 18,
+   "first_combat": 38,
+   "first_siege_against": 68
+  },
+  "B": {
+   "first_move": 1,
+   "first_base": 2,
+   "first_upgrade": 2,
+   "first_train": 12,
+   "first_combat": 38,
+   "first_siege_against": 59
+  }
+ },
+ "building_events": [
+  [
+   2,
+   "A",
+   4,
+   "build",
+   1,
+   300
+  ],
+  [
+   2,
+   "B",
+   46,
+   "build",
+   1,
+   300
+  ],
+  [
+   7,
+   "A",
+   25,
+   "build",
+   1,
+   300
+  ],
+  [
+   7,
+   "B",
+   44,
+   "build",
+   1,
+   300
+  ],
+  [
+   19,
+   "B",
+   29,
+   "build",
+   1,
+   300
+  ],
+  [
+   21,
+   "A",
+   6,
+   "build",
+   1,
+   300
+  ],
+  [
+   27,
+   "B",
+   35,
+   "build",
+   1,
+   300
+  ],
+  [
+   31,
+   "A",
+   21,
+   "build",
+   1,
+   300
+  ],
+  [
+   36,
+   "B",
+   15,
+   "build",
+   1,
+   300
+  ],
+  [
+   40,
+   "A",
+   0,
+   "upgrade",
+   2,
+   600
+  ],
+  [
+   50,
+   "B",
+   50,
+   "upgrade",
+   2,
+   600
+  ],
+  [
+   62,
+   "A",
+   35,
+   "build",
+   1,
+   300
+  ],
+  [
+   71,
+   "B",
+   6,
+   "build",
+   1,
+   300
+  ],
+  [
+   89,
+   "B",
+   44,
+   "upgrade",
+   2,
+   600
+  ],
+  [
+   97,
+   "A",
+   44,
+   "build",
+   1,
+   300
+  ],
+  [
+   114,
+   "A",
+   6,
+   "upgrade",
+   2,
+   600
+  ],
+  [
+   123,
+   "A",
+   15,
+   "build",
+   1,
+   300
+  ]
+ ],
+ "hq_pressure": [
+  [
+   104,
+   "A",
+   [
+    "B15"
+   ],
+   0
+  ],
+  [
+   105,
+   "A",
+   [
+    "B22",
+    "B23",
+    "B25",
+    "B29"
+   ],
+   0
+  ],
+  [
+   106,
+   "A",
+   [
+    "B7",
+    "B23",
+    "B25",
+    "B29",
+    "B30",
+    "B31"
+   ],
+   0
+  ],
+  [
+   107,
+   "A",
+   [
+    "B23",
+    "B25",
+    "B29",
+    "B30"
+   ],
+   0
+  ],
+  [
+   108,
+   "A",
+   [
+    "B30"
+   ],
+   0
+  ],
+  [
+   130,
+   "B",
+   [
+    "A32",
+    "A33",
+    "A34",
+    "A35",
+    "A36"
+   ],
+   5
+  ],
+  [
+   131,
+   "B",
+   [
+    "A26",
+    "A32",
+    "A33",
+    "A34",
+    "A35",
+    "A36"
+   ],
+   6
+  ],
+  [
+   132,
+   "B",
+   [
+    "A25",
+    "A26",
+    "A33",
+    "A34",
+    "A35",
+    "A36"
+   ],
+   4
+  ]
+ ],
+ "hunger_flags": [
+  [
+   89,
+   "B",
+   15,
+   0,
+   "drift"
+  ],
+  [
+   90,
+   "B",
+   15,
+   0,
+   "drift"
+  ],
+  [
+   91,
+   "B",
+   15,
+   0,
+   "drift"
+  ],
+  [
+   93,
+   "B",
+   15,
+   0,
+   "drift"
+  ],
+  [
+   99,
+   "B",
+   7,
+   0,
+   "drift"
+  ],
+  [
+   101,
+   "B",
+   15,
+   0,
+   "drift"
+  ],
+  [
+   102,
+   "B",
+   14,
+   0,
+   "drift"
+  ],
+  [
+   103,
+   "B",
+   14,
+   0,
+   "drift"
+  ],
+  [
+   104,
+   "B",
+   12,
+   0,
+   "drift"
+  ],
+  [
+   105,
+   "B",
+   10,
+   1,
+   "drift"
+  ],
+  [
+   114,
+   "A",
+   10,
+   0,
+   "drift"
+  ],
+  [
+   123,
+   "A",
+   14,
+   0,
+   "drift"
+  ],
+  [
+   124,
+   "A",
+   8,
+   0,
+   "drift"
+  ],
+  [
+   130,
+   "A",
+   17,
+   0,
+   "drift"
+  ],
+  [
+   131,
+   "A",
+   6,
+   0,
+   "drift"
+  ],
+  [
+   132,
+   "A",
+   1,
+   0,
+   "drift"
+  ]
+ ],
+ "warnings": [],
+ "signals": {
+  "winner": "A",
+  "cond_type": "combat_finish",
+  "finisher": {
+   "loser": "B",
+   "attacker": "A",
+   "turn": 132,
+   "units": [
+    "A25",
+    "A26",
+    "A32",
+    "A33",
+    "A34",
+    "A35",
+    "A36"
+   ]
+  },
+  "growth": {
+   "build_gap_final": 5,
+   "build_settle": 97,
+   "cumincome_gap_final": 2250,
+   "cumincome_settle": 110,
+   "quartiles": [
+    {
+     "turn": 33,
+     "build": [
+      5,
+      5
+     ],
+     "alive": [
+      6,
+      6
+     ],
+     "hq_level": [
+      1,
+      1
+     ],
+     "hq_hp": [
+      10,
+      10
+     ]
+    },
+    {
+     "turn": 66,
+     "build": [
+      6,
+      5
+     ],
+     "alive": [
+      14,
+      14
+     ],
+     "hq_level": [
+      2,
+      2
+     ],
+     "hq_hp": [
+      15,
+      15
+     ]
+    },
+    {
+     "turn": 99,
+     "build": [
+      6,
+      5
+     ],
+     "alive": [
+      18,
+      16
+     ],
+     "hq_level": [
+      2,
+      2
+     ],
+     "hq_hp": [
+      15,
+      15
+     ]
+    },
+    {
+     "turn": 132,
+     "build": [
+      7,
+      2
+     ],
+     "alive": [
+      16,
+      0
+     ],
+     "hq_level": [
+      2,
+      2
+     ],
+     "hq_hp": [
+      15,
+      0
+     ]
+    }
+   ]
+  },
+  "orders": {
+   "train_burst": [],
+   "move_burst": [
+    [
+     67,
+     "B",
+     8
+    ],
+    [
+     68,
+     "A",
+     5
+    ],
+    [
+     73,
+     "A",
+     5
+    ],
+    [
+     83,
+     "A",
+     5
+    ],
+    [
+     91,
+     "A",
+     7
+    ],
+    [
+     100,
+     "B",
+     7
+    ],
+    [
+     101,
+     "A",
+     9
+    ],
+    [
+     101,
+     "B",
+     9
+    ],
+    [
+     105,
+     "B",
+     5
+    ],
+    [
+     107,
+     "B",
+     6
+    ],
+    [
+     126,
+     "A",
+     5
+    ],
+    [
+     130,
+     "A",
+     11
+    ]
+   ],
+   "income_drop": [
+    [
+     68,
+     "A",
+     105,
+     45
+    ],
+    [
+     69,
+     "A",
+     105,
+     45
+    ],
+    [
+     70,
+     "A",
+     105,
+     60
+    ],
+    [
+     101,
+     "B",
+     90,
+     0
+    ],
+    [
+     102,
+     "A",
+     105,
+     60
+    ],
+    [
+     102,
+     "B",
+     90,
+     15
+    ],
+    [
+     103,
+     "A",
+     105,
+     60
+    ],
+    [
+     103,
+     "B",
+     90,
+     30
+    ],
+    [
+     104,
+     "A",
+     105,
+     45
+    ],
+    [
+     104,
+     "B",
+     90,
+     15
+    ],
+    [
+     106,
+     "B",
+     30,
+     0
+    ],
+    [
+     107,
+     "B",
+     30,
+     0
+    ],
+    [
+     130,
+     "A",
+     120,
+     30
+    ],
+    [
+     131,
+     "A",
+     120,
+     45
+    ],
+    [
+     132,
+     "A",
+     120,
+     30
+    ]
+   ],
+   "rally_no_threat": [
+    [
+     68,
+     "A",
+     4
+    ]
+   ],
+   "futile_train": [],
+   "assaults": [
+    {
+     "attacker": "B",
+     "defender": "A",
+     "start": 104,
+     "end": 108,
+     "peak": 6,
+     "units": [
+      "B7",
+      "B15",
+      "B22",
+      "B23",
+      "B25",
+      "B29",
+      "B30",
+      "B31"
+     ],
+     "success": false,
+     "losses": 8
+    },
+    {
+     "attacker": "A",
+     "defender": "B",
+     "start": 130,
+     "end": 132,
+     "peak": 6,
+     "units": [
+      "A25",
+      "A26",
+      "A32",
+      "A33",
+      "A34",
+      "A35",
+      "A36"
+     ],
+     "success": true,
+     "losses": 1
+    }
+   ],
+   "trade_total": {
+    "A": 118,
+    "B": 132
+   },
+   "net_loss_turns": [
+    [
+     104,
+     "B",
+     3,
+     9,
+     -6
+    ],
+    [
+     63,
+     "B",
+     2,
+     6,
+     -4
+    ],
+    [
+     95,
+     "B",
+     1,
+     5,
+     -4
+    ],
+    [
+     96,
+     "B",
+     1,
+     5,
+     -4
+    ],
+    [
+     76,
+     "B",
+     1,
+     4,
+     -3
+    ],
+    [
+     93,
+     "B",
+     2,
+     5,
+     -3
+    ],
+    [
+     101,
+     "A",
+     2,
+     5,
+     -3
+    ],
+    [
+     105,
+     "B",
+     7,
+     10,
+     -3
+    ],
+    [
+     108,
+     "B",
+     4,
+     7,
+     -3
+    ],
+    [
+     68,
+     "B",
+     2,
+     4,
+     -2
+    ]
+   ],
+   "junk": [
+    [
+     "B",
+     "B15",
+     24,
+     34
+    ],
+    [
+     "A",
+     "A13",
+     21,
+     33
+    ],
+    [
+     "B",
+     "B13",
+     20,
+     30
+    ],
+    [
+     "B",
+     "B11",
+     19,
+     30
+    ],
+    [
+     "A",
+     "A18",
+     16,
+     23
+    ],
+    [
+     "A",
+     "A16",
+     13,
+     25
+    ],
+    [
+     "B",
+     "B8",
+     13,
+     24
+    ],
+    [
+     "B",
+     "B18",
+     12,
+     21
+    ],
+    [
+     "A",
+     "A20",
+     11,
+     18
+    ],
+    [
+     "A",
+     "A21",
+     10,
+     19
+    ],
+    [
+     "B",
+     "B21",
+     10,
+     21
+    ],
+    [
+     "A",
+     "A12",
+     8,
+     18
+    ]
+   ]
+  }
+ },
+ "units": {
+  "A": {
+   "A1": {
+    "spawn_turn": 0,
+    "spawn_region": 0,
+    "death_turn": 105,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      0,
+      0
+     ]
+    ]
+   },
+   "A2": {
+    "spawn_turn": 0,
+    "spawn_region": 0,
+    "death_turn": 104,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      0,
+      0
+     ],
+     [
+      1,
+      5
+     ],
+     [
+      2,
+      27
+     ],
+     [
+      3,
+      25
+     ],
+     [
+      68,
+      27
+     ],
+     [
+      69,
+      5
+     ],
+     [
+      70,
+      0
+     ]
+    ]
+   },
+   "A3": {
+    "spawn_turn": 0,
+    "spawn_region": 0,
+    "death_turn": 75,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      0,
+      0
+     ],
+     [
+      1,
+      4
+     ],
+     [
+      68,
+      0
+     ],
+     [
+      71,
+      5
+     ],
+     [
+      72,
+      27
+     ],
+     [
+      73,
+      25
+     ]
+    ]
+   },
+   "A4": {
+    "spawn_turn": 18,
+    "spawn_region": 0,
+    "death_turn": 77,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      18,
+      0
+     ],
+     [
+      19,
+      1
+     ],
+     [
+      20,
+      6
+     ],
+     [
+      68,
+      1
+     ],
+     [
+      69,
+      0
+     ],
+     [
+      73,
+      5
+     ],
+     [
+      74,
+      27
+     ],
+     [
+      75,
+      31
+     ],
+     [
+      76,
+      34
+     ]
+    ]
+   },
+   "A5": {
+    "spawn_turn": 27,
+    "spawn_region": 0,
+    "death_turn": 80,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      27,
+      0
+     ],
+     [
+      28,
+      3
+     ],
+     [
+      29,
+      9
+     ],
+     [
+      30,
+      21
+     ],
+     [
+      68,
+      9
+     ],
+     [
+      69,
+      3
+     ],
+     [
+      70,
+      0
+     ],
+     [
+      73,
+      5
+     ],
+     [
+      74,
+      27
+     ],
+     [
+      75,
+      31
+     ],
+     [
+      76,
+      34
+     ]
+    ]
+   },
+   "A6": {
+    "spawn_turn": 30,
+    "spawn_region": 0,
+    "death_turn": 39,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      30,
+      0
+     ],
+     [
+      35,
+      1
+     ],
+     [
+      36,
+      6
+     ],
+     [
+      37,
+      10
+     ],
+     [
+      38,
+      15
+     ]
+    ]
+   },
+   "A7": {
+    "spawn_turn": 46,
+    "spawn_region": 0,
+    "death_turn": 103,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      46,
+      0
+     ],
+     [
+      73,
+      5
+     ],
+     [
+      74,
+      27
+     ],
+     [
+      75,
+      31
+     ],
+     [
+      76,
+      34
+     ],
+     [
+      81,
+      44
+     ],
+     [
+      82,
+      34
+     ],
+     [
+      83,
+      31
+     ],
+     [
+      84,
+      25
+     ],
+     [
+      102,
+      27
+     ],
+     [
+      103,
+      5
+     ]
+    ]
+   },
+   "A8": {
+    "spawn_turn": 48,
+    "spawn_region": 0,
+    "death_turn": 59,
+    "death_cause": "TURRET",
+    "path": [
+     [
+      48,
+      0
+     ],
+     [
+      52,
+      5
+     ],
+     [
+      53,
+      27
+     ],
+     [
+      54,
+      25
+     ],
+     [
+      55,
+      31
+     ],
+     [
+      56,
+      32
+     ],
+     [
+      57,
+      35
+     ]
+    ]
+   },
+   "A9": {
+    "spawn_turn": 49,
+    "spawn_region": 0,
+    "death_turn": 106,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      49,
+      0
+     ],
+     [
+      53,
+      5
+     ],
+     [
+      54,
+      27
+     ],
+     [
+      55,
+      25
+     ],
+     [
+      57,
+      27
+     ],
+     [
+      58,
+      28
+     ],
+     [
+      59,
+      21
+     ],
+     [
+      60,
+      26
+     ],
+     [
+      61,
+      33
+     ],
+     [
+      62,
+      35
+     ],
+     [
+      102,
+      32
+     ],
+     [
+      103,
+      28
+     ],
+     [
+      104,
+      7
+     ],
+     [
+      105,
+      4
+     ],
+     [
+      106,
+      0
+     ]
+    ]
+   },
+   "A10": {
+    "spawn_turn": 51,
+    "spawn_region": 0,
+    "death_turn": 75,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      51,
+      0
+     ],
+     [
+      55,
+      4
+     ],
+     [
+      56,
+      7
+     ],
+     [
+      57,
+      28
+     ],
+     [
+      58,
+      32
+     ],
+     [
+      59,
+      35
+     ],
+     [
+      61,
+      33
+     ],
+     [
+      62,
+      26
+     ],
+     [
+      63,
+      21
+     ],
+     [
+      64,
+      9
+     ],
+     [
+      65,
+      4
+     ],
+     [
+      66,
+      7
+     ],
+     [
+      67,
+      28
+     ],
+     [
+      68,
+      32
+     ],
+     [
+      69,
+      35
+     ],
+     [
+      73,
+      40
+     ],
+     [
+      74,
+      44
+     ]
+    ]
+   },
+   "A11": {
+    "spawn_turn": 53,
+    "spawn_region": 0,
+    "death_turn": 68,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      53,
+      0
+     ],
+     [
+      55,
+      4
+     ],
+     [
+      56,
+      7
+     ],
+     [
+      57,
+      28
+     ],
+     [
+      58,
+      32
+     ],
+     [
+      59,
+      35
+     ],
+     [
+      67,
+      40
+     ],
+     [
+      68,
+      44
+     ]
+    ]
+   },
+   "A12": {
+    "spawn_turn": 54,
+    "spawn_region": 0,
+    "death_turn": 90,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      54,
+      0
+     ],
+     [
+      55,
+      4
+     ],
+     [
+      56,
+      7
+     ],
+     [
+      57,
+      28
+     ],
+     [
+      58,
+      32
+     ],
+     [
+      59,
+      35
+     ],
+     [
+      62,
+      32
+     ],
+     [
+      63,
+      31
+     ],
+     [
+      64,
+      25
+     ],
+     [
+      66,
+      31
+     ],
+     [
+      67,
+      32
+     ],
+     [
+      68,
+      35
+     ],
+     [
+      69,
+      32
+     ],
+     [
+      70,
+      31
+     ],
+     [
+      71,
+      25
+     ],
+     [
+      87,
+      31
+     ],
+     [
+      88,
+      34
+     ],
+     [
+      89,
+      44
+     ]
+    ]
+   },
+   "A13": {
+    "spawn_turn": 57,
+    "spawn_region": 0,
+    "death_turn": 105,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      57,
+      0
+     ],
+     [
+      58,
+      5
+     ],
+     [
+      59,
+      27
+     ],
+     [
+      60,
+      25
+     ],
+     [
+      61,
+      31
+     ],
+     [
+      62,
+      32
+     ],
+     [
+      63,
+      35
+     ],
+     [
+      67,
+      40
+     ],
+     [
+      68,
+      44
+     ],
+     [
+      70,
+      34
+     ],
+     [
+      71,
+      31
+     ],
+     [
+      72,
+      27
+     ],
+     [
+      73,
+      5
+     ],
+     [
+      74,
+      0
+     ],
+     [
+      75,
+      5
+     ],
+     [
+      76,
+      27
+     ],
+     [
+      77,
+      25
+     ],
+     [
+      83,
+      31
+     ],
+     [
+      84,
+      32
+     ],
+     [
+      85,
+      35
+     ],
+     [
+      86,
+      32
+     ],
+     [
+      87,
+      31
+     ],
+     [
+      88,
+      25
+     ],
+     [
+      91,
+      31
+     ],
+     [
+      92,
+      34
+     ],
+     [
+      93,
+      44
+     ],
+     [
+      94,
+      34
+     ],
+     [
+      95,
+      31
+     ],
+     [
+      96,
+      25
+     ],
+     [
+      98,
+      27
+     ],
+     [
+      99,
+      7
+     ],
+     [
+      100,
+      4
+     ],
+     [
+      101,
+      0
+     ]
+    ]
+   },
+   "A14": {
+    "spawn_turn": 59,
+    "spawn_region": 0,
+    "death_turn": 106,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      59,
+      0
+     ],
+     [
+      60,
+      3
+     ],
+     [
+      61,
+      9
+     ],
+     [
+      62,
+      21
+     ],
+     [
+      63,
+      26
+     ],
+     [
+      64,
+      33
+     ],
+     [
+      65,
+      35
+     ],
+     [
+      67,
+      40
+     ],
+     [
+      68,
+      44
+     ],
+     [
+      70,
+      34
+     ],
+     [
+      71,
+      31
+     ],
+     [
+      72,
+      27
+     ],
+     [
+      73,
+      5
+     ],
+     [
+      74,
+      0
+     ],
+     [
+      76,
+      4
+     ],
+     [
+      77,
+      7
+     ],
+     [
+      78,
+      28
+     ],
+     [
+      79,
+      32
+     ],
+     [
+      80,
+      35
+     ],
+     [
+      81,
+      33
+     ],
+     [
+      82,
+      26
+     ],
+     [
+      83,
+      21
+     ],
+     [
+      101,
+      9
+     ],
+     [
+      102,
+      3
+     ],
+     [
+      103,
+      0
+     ]
+    ]
+   },
+   "A15": {
+    "spawn_turn": 61,
+    "spawn_region": 0,
+    "death_turn": 100,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      61,
+      0
+     ],
+     [
+      62,
+      3
+     ],
+     [
+      63,
+      9
+     ],
+     [
+      64,
+      21
+     ],
+     [
+      65,
+      26
+     ],
+     [
+      66,
+      33
+     ],
+     [
+      67,
+      35
+     ],
+     [
+      68,
+      33
+     ],
+     [
+      69,
+      26
+     ],
+     [
+      70,
+      21
+     ],
+     [
+      81,
+      9
+     ],
+     [
+      82,
+      3
+     ],
+     [
+      83,
+      0
+     ],
+     [
+      96,
+      5
+     ],
+     [
+      97,
+      27
+     ],
+     [
+      98,
+      25
+     ],
+     [
+      99,
+      27
+     ],
+     [
+      100,
+      5
+     ]
+    ]
+   },
+   "A16": {
+    "spawn_turn": 63,
+    "spawn_region": 0,
+    "death_turn": 101,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      63,
+      0
+     ],
+     [
+      64,
+      4
+     ],
+     [
+      65,
+      7
+     ],
+     [
+      66,
+      28
+     ],
+     [
+      67,
+      32
+     ],
+     [
+      68,
+      35
+     ],
+     [
+      69,
+      32
+     ],
+     [
+      70,
+      28
+     ],
+     [
+      71,
+      7
+     ],
+     [
+      72,
+      4
+     ],
+     [
+      81,
+      0
+     ],
+     [
+      84,
+      4
+     ],
+     [
+      85,
+      7
+     ],
+     [
+      86,
+      28
+     ],
+     [
+      87,
+      32
+     ],
+     [
+      88,
+      35
+     ],
+     [
+      91,
+      40
+     ],
+     [
+      92,
+      44
+     ],
+     [
+      93,
+      40
+     ],
+     [
+      94,
+      35
+     ],
+     [
+      96,
+      32
+     ],
+     [
+      97,
+      31
+     ],
+     [
+      98,
+      25
+     ],
+     [
+      99,
+      27
+     ],
+     [
+      100,
+      5
+     ]
+    ]
+   },
+   "A17": {
+    "spawn_turn": 68,
+    "spawn_region": 0,
+    "death_turn": 103,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      68,
+      0
+     ],
+     [
+      73,
+      5
+     ],
+     [
+      74,
+      27
+     ],
+     [
+      75,
+      31
+     ],
+     [
+      76,
+      34
+     ],
+     [
+      81,
+      44
+     ],
+     [
+      82,
+      34
+     ],
+     [
+      83,
+      31
+     ],
+     [
+      84,
+      27
+     ],
+     [
+      85,
+      7
+     ],
+     [
+      86,
+      4
+     ],
+     [
+      98,
+      0
+     ],
+     [
+      100,
+      5
+     ]
+    ]
+   },
+   "A18": {
+    "spawn_turn": 69,
+    "spawn_region": 0,
+    "death_turn": 107,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      69,
+      0
+     ],
+     [
+      75,
+      5
+     ],
+     [
+      76,
+      27
+     ],
+     [
+      77,
+      25
+     ],
+     [
+      83,
+      31
+     ],
+     [
+      84,
+      34
+     ],
+     [
+      85,
+      44
+     ],
+     [
+      87,
+      34
+     ],
+     [
+      88,
+      31
+     ],
+     [
+      89,
+      27
+     ],
+     [
+      90,
+      5
+     ],
+     [
+      91,
+      0
+     ],
+     [
+      92,
+      5
+     ],
+     [
+      93,
+      27
+     ],
+     [
+      94,
+      25
+     ],
+     [
+      98,
+      31
+     ],
+     [
+      99,
+      34
+     ],
+     [
+      100,
+      44
+     ],
+     [
+      103,
+      34
+     ],
+     [
+      104,
+      31
+     ],
+     [
+      105,
+      27
+     ],
+     [
+      106,
+      5
+     ],
+     [
+      107,
+      0
+     ]
+    ]
+   },
+   "A19": {
+    "spawn_turn": 75,
+    "spawn_region": 0,
+    "death_turn": 105,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      75,
+      0
+     ],
+     [
+      76,
+      5
+     ],
+     [
+      77,
+      27
+     ],
+     [
+      78,
+      25
+     ],
+     [
+      83,
+      31
+     ],
+     [
+      84,
+      34
+     ],
+     [
+      85,
+      44
+     ],
+     [
+      88,
+      40
+     ],
+     [
+      89,
+      35
+     ],
+     [
+      91,
+      40
+     ],
+     [
+      92,
+      44
+     ],
+     [
+      101,
+      34
+     ],
+     [
+      102,
+      31
+     ],
+     [
+      103,
+      25
+     ],
+     [
+      104,
+      27
+     ],
+     [
+      105,
+      5
+     ]
+    ]
+   },
+   "A20": {
+    "spawn_turn": 77,
+    "spawn_region": 0,
+    "death_turn": 107,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      77,
+      0
+     ],
+     [
+      78,
+      5
+     ],
+     [
+      79,
+      27
+     ],
+     [
+      80,
+      25
+     ],
+     [
+      83,
+      31
+     ],
+     [
+      84,
+      34
+     ],
+     [
+      85,
+      44
+     ],
+     [
+      88,
+      34
+     ],
+     [
+      89,
+      31
+     ],
+     [
+      90,
+      25
+     ],
+     [
+      91,
+      31
+     ],
+     [
+      92,
+      34
+     ],
+     [
+      93,
+      44
+     ],
+     [
+      101,
+      34
+     ],
+     [
+      102,
+      31
+     ],
+     [
+      103,
+      27
+     ],
+     [
+      104,
+      5
+     ],
+     [
+      105,
+      0
+     ]
+    ]
+   },
+   "A21": {
+    "spawn_turn": 79,
+    "spawn_region": 0,
+    "death_turn": 108,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      79,
+      0
+     ],
+     [
+      80,
+      5
+     ],
+     [
+      81,
+      27
+     ],
+     [
+      82,
+      25
+     ],
+     [
+      83,
+      31
+     ],
+     [
+      84,
+      34
+     ],
+     [
+      85,
+      44
+     ],
+     [
+      88,
+      34
+     ],
+     [
+      89,
+      31
+     ],
+     [
+      90,
+      25
+     ],
+     [
+      91,
+      31
+     ],
+     [
+      92,
+      34
+     ],
+     [
+      93,
+      44
+     ],
+     [
+      101,
+      34
+     ],
+     [
+      102,
+      31
+     ],
+     [
+      103,
+      27
+     ],
+     [
+      104,
+      7
+     ],
+     [
+      105,
+      4
+     ],
+     [
+      106,
+      0
+     ]
+    ]
+   },
+   "A22": {
+    "spawn_turn": 81,
+    "spawn_region": 0,
+    "death_turn": 93,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      81,
+      0
+     ],
+     [
+      84,
+      5
+     ],
+     [
+      85,
+      27
+     ],
+     [
+      86,
+      25
+     ],
+     [
+      87,
+      31
+     ],
+     [
+      88,
+      34
+     ],
+     [
+      89,
+      44
+     ]
+    ]
+   },
+   "A23": {
+    "spawn_turn": 85,
+    "spawn_region": 0,
+    "death_turn": null,
+    "death_cause": null,
+    "path": [
+     [
+      85,
+      0
+     ],
+     [
+      88,
+      5
+     ],
+     [
+      89,
+      27
+     ],
+     [
+      90,
+      25
+     ],
+     [
+      91,
+      31
+     ],
+     [
+      92,
+      34
+     ],
+     [
+      93,
+      44
+     ],
+     [
+      101,
+      40
+     ],
+     [
+      102,
+      35
+     ],
+     [
+      103,
+      33
+     ],
+     [
+      104,
+      26
+     ],
+     [
+      105,
+      21
+     ]
+    ]
+   },
+   "A24": {
+    "spawn_turn": 88,
+    "spawn_region": 0,
+    "death_turn": null,
+    "death_cause": null,
+    "path": [
+     [
+      88,
+      0
+     ],
+     [
+      90,
+      5
+     ],
+     [
+      91,
+      27
+     ],
+     [
+      92,
+      25
+     ],
+     [
+      93,
+      31
+     ],
+     [
+      94,
+      34
+     ],
+     [
+      95,
+      44
+     ],
+     [
+      101,
+      34
+     ],
+     [
+      102,
+      31
+     ],
+     [
+      103,
+      25
+     ],
+     [
+      104,
+      19
+     ],
+     [
+      105,
+      16
+     ],
+     [
+      106,
+      6
+     ],
+     [
+      107,
+      5
+     ],
+     [
+      108,
+      4
+     ],
+     [
+      130,
+      7
+     ],
+     [
+      131,
+      27
+     ],
+     [
+      132,
+      31
+     ]
+    ]
+   },
+   "A25": {
+    "spawn_turn": 90,
+    "spawn_region": 0,
+    "death_turn": null,
+    "death_cause": null,
+    "path": [
+     [
+      90,
+      0
+     ],
+     [
+      91,
+      5
+     ],
+     [
+      92,
+      27
+     ],
+     [
+      93,
+      25
+     ],
+     [
+      98,
+      31
+     ],
+     [
+      99,
+      34
+     ],
+     [
+      100,
+      44
+     ],
+     [
+      101,
+      34
+     ],
+     [
+      102,
+      31
+     ],
+     [
+      103,
+      25
+     ],
+     [
+      104,
+      19
+     ],
+     [
+      105,
+      16
+     ],
+     [
+      106,
+      6
+     ],
+     [
+      107,
+      16
+     ],
+     [
+      108,
+      19
+     ],
+     [
+      109,
+      25
+     ],
+     [
+      130,
+      23
+     ],
+     [
+      131,
+      45
+     ],
+     [
+      132,
+      50
+     ]
+    ]
+   },
+   "A26": {
+    "spawn_turn": 93,
+    "spawn_region": 0,
+    "death_turn": null,
+    "death_cause": null,
+    "path": [
+     [
+      93,
+      0
+     ],
+     [
+      94,
+      4
+     ],
+     [
+      95,
+      7
+     ],
+     [
+      96,
+      28
+     ],
+     [
+      97,
+      32
+     ],
+     [
+      98,
+      35
+     ],
+     [
+      99,
+      40
+     ],
+     [
+      100,
+      44
+     ],
+     [
+      101,
+      34
+     ],
+     [
+      102,
+      31
+     ],
+     [
+      103,
+      25
+     ],
+     [
+      104,
+      19
+     ],
+     [
+      105,
+      16
+     ],
+     [
+      106,
+      6
+     ],
+     [
+      107,
+      16
+     ],
+     [
+      108,
+      19
+     ],
+     [
+      109,
+      25
+     ],
+     [
+      110,
+      31
+     ],
+     [
+      111,
+      34
+     ],
+     [
+      112,
+      44
+     ],
+     [
+      130,
+      49
+     ],
+     [
+      131,
+      50
+     ]
+    ]
+   },
+   "A27": {
+    "spawn_turn": 95,
+    "spawn_region": 0,
+    "death_turn": null,
+    "death_cause": null,
+    "path": [
+     [
+      95,
+      0
+     ],
+     [
+      96,
+      5
+     ],
+     [
+      97,
+      27
+     ],
+     [
+      98,
+      25
+     ],
+     [
+      99,
+      31
+     ],
+     [
+      100,
+      34
+     ],
+     [
+      101,
+      44
+     ],
+     [
+      102,
+      40
+     ],
+     [
+      103,
+      35
+     ],
+     [
+      130,
+      40
+     ],
+     [
+      131,
+      44
+     ],
+     [
+      132,
+      49
+     ]
+    ]
+   },
+   "A28": {
+    "spawn_turn": 102,
+    "spawn_region": 0,
+    "death_turn": null,
+    "death_cause": null,
+    "path": [
+     [
+      102,
+      0
+     ],
+     [
+      130,
+      5
+     ],
+     [
+      131,
+      16
+     ],
+     [
+      132,
+      19
+     ]
+    ]
+   },
+   "A29": {
+    "spawn_turn": 104,
+    "spawn_region": 0,
+    "death_turn": null,
+    "death_cause": null,
+    "path": [
+     [
+      104,
+      0
+     ],
+     [
+      130,
+      5
+     ],
+     [
+      131,
+      16
+     ],
+     [
+      132,
+      19
+     ]
+    ]
+   },
+   "A30": {
+    "spawn_turn": 105,
+    "spawn_region": 0,
+    "death_turn": null,
+    "death_cause": null,
+    "path": [
+     [
+      105,
+      0
+     ],
+     [
+      117,
+      1
+     ],
+     [
+      118,
+      6
+     ],
+     [
+      119,
+      10
+     ],
+     [
+      120,
+      15
+     ]
+    ]
+   },
+   "A31": {
+    "spawn_turn": 106,
+    "spawn_region": 0,
+    "death_turn": null,
+    "death_cause": null,
+    "path": [
+     [
+      106,
+      0
+     ],
+     [
+      110,
+      1
+     ],
+     [
+      111,
+      6
+     ],
+     [
+      130,
+      16
+     ],
+     [
+      131,
+      19
+     ],
+     [
+      132,
+      23
+     ]
+    ]
+   },
+   "A32": {
+    "spawn_turn": 109,
+    "spawn_region": 0,
+    "death_turn": 132,
+    "death_cause": "TURRET",
+    "path": [
+     [
+      109,
+      0
+     ],
+     [
+      117,
+      1
+     ],
+     [
+      118,
+      6
+     ],
+     [
+      119,
+      10
+     ],
+     [
+      120,
+      15
+     ],
+     [
+      123,
+      10
+     ],
+     [
+      124,
+      6
+     ],
+     [
+      126,
+      16
+     ],
+     [
+      127,
+      19
+     ],
+     [
+      128,
+      23
+     ],
+     [
+      129,
+      45
+     ],
+     [
+      130,
+      50
+     ]
+    ]
+   },
+   "A33": {
+    "spawn_turn": 118,
+    "spawn_region": 0,
+    "death_turn": null,
+    "death_cause": null,
+    "path": [
+     [
+      118,
+      0
+     ],
+     [
+      119,
+      1
+     ],
+     [
+      120,
+      6
+     ],
+     [
+      121,
+      10
+     ],
+     [
+      122,
+      15
+     ],
+     [
+      123,
+      10
+     ],
+     [
+      124,
+      6
+     ],
+     [
+      126,
+      16
+     ],
+     [
+      127,
+      19
+     ],
+     [
+      128,
+      23
+     ],
+     [
+      129,
+      45
+     ],
+     [
+      130,
+      50
+     ]
+    ]
+   },
+   "A34": {
+    "spawn_turn": 119,
+    "spawn_region": 0,
+    "death_turn": null,
+    "death_cause": null,
+    "path": [
+     [
+      119,
+      0
+     ],
+     [
+      120,
+      1
+     ],
+     [
+      121,
+      6
+     ],
+     [
+      122,
+      10
+     ],
+     [
+      123,
+      15
+     ],
+     [
+      124,
+      10
+     ],
+     [
+      125,
+      6
+     ],
+     [
+      126,
+      16
+     ],
+     [
+      127,
+      19
+     ],
+     [
+      128,
+      23
+     ],
+     [
+      129,
+      45
+     ],
+     [
+      130,
+      50
+     ]
+    ]
+   },
+   "A35": {
+    "spawn_turn": 120,
+    "spawn_region": 0,
+    "death_turn": null,
+    "death_cause": null,
+    "path": [
+     [
+      120,
+      0
+     ],
+     [
+      121,
+      1
+     ],
+     [
+      122,
+      6
+     ],
+     [
+      126,
+      16
+     ],
+     [
+      127,
+      19
+     ],
+     [
+      128,
+      23
+     ],
+     [
+      129,
+      45
+     ],
+     [
+      130,
+      50
+     ]
+    ]
+   },
+   "A36": {
+    "spawn_turn": 122,
+    "spawn_region": 0,
+    "death_turn": null,
+    "death_cause": null,
+    "path": [
+     [
+      122,
+      0
+     ],
+     [
+      123,
+      1
+     ],
+     [
+      124,
+      6
+     ],
+     [
+      126,
+      16
+     ],
+     [
+      127,
+      19
+     ],
+     [
+      128,
+      23
+     ],
+     [
+      129,
+      45
+     ],
+     [
+      130,
+      50
+     ]
+    ]
+   },
+   "A37": {
+    "spawn_turn": 127,
+    "spawn_region": 0,
+    "death_turn": null,
+    "death_cause": null,
+    "path": [
+     [
+      127,
+      0
+     ],
+     [
+      128,
+      1
+     ],
+     [
+      129,
+      6
+     ],
+     [
+      130,
+      16
+     ],
+     [
+      131,
+      19
+     ],
+     [
+      132,
+      23
+     ]
+    ]
+   },
+   "A38": {
+    "spawn_turn": 128,
+    "spawn_region": 0,
+    "death_turn": null,
+    "death_cause": null,
+    "path": [
+     [
+      128,
+      0
+     ],
+     [
+      129,
+      1
+     ],
+     [
+      130,
+      6
+     ]
+    ]
+   },
+   "A39": {
+    "spawn_turn": 129,
+    "spawn_region": 0,
+    "death_turn": null,
+    "death_cause": null,
+    "path": [
+     [
+      129,
+      0
+     ],
+     [
+      130,
+      5
+     ],
+     [
+      131,
+      16
+     ],
+     [
+      132,
+      19
+     ]
+    ]
+   }
+  },
+  "B": {
+   "B1": {
+    "spawn_turn": 0,
+    "spawn_region": 50,
+    "death_turn": 106,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      0,
+      50
+     ],
+     [
+      101,
+      45
+     ],
+     [
+      102,
+      23
+     ],
+     [
+      103,
+      19
+     ],
+     [
+      104,
+      16
+     ],
+     [
+      105,
+      5
+     ],
+     [
+      106,
+      0
+     ]
+    ]
+   },
+   "B2": {
+    "spawn_turn": 0,
+    "spawn_region": 50,
+    "death_turn": 106,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      0,
+      50
+     ],
+     [
+      1,
+      46
+     ],
+     [
+      101,
+      43
+     ],
+     [
+      102,
+      23
+     ],
+     [
+      103,
+      19
+     ],
+     [
+      104,
+      16
+     ],
+     [
+      105,
+      5
+     ],
+     [
+      106,
+      0
+     ]
+    ]
+   },
+   "B3": {
+    "spawn_turn": 0,
+    "spawn_region": 50,
+    "death_turn": 69,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      0,
+      50
+     ],
+     [
+      3,
+      49
+     ],
+     [
+      4,
+      44
+     ]
+    ]
+   },
+   "B4": {
+    "spawn_turn": 12,
+    "spawn_region": 50,
+    "death_turn": 107,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      12,
+      50
+     ],
+     [
+      13,
+      47
+     ],
+     [
+      14,
+      41
+     ],
+     [
+      15,
+      29
+     ],
+     [
+      101,
+      24
+     ],
+     [
+      102,
+      17
+     ],
+     [
+      103,
+      15
+     ],
+     [
+      104,
+      10
+     ],
+     [
+      105,
+      6
+     ],
+     [
+      106,
+      1
+     ],
+     [
+      107,
+      0
+     ]
+    ]
+   },
+   "B5": {
+    "spawn_turn": 21,
+    "spawn_region": 50,
+    "death_turn": 59,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      21,
+      50
+     ],
+     [
+      22,
+      49
+     ],
+     [
+      23,
+      44
+     ],
+     [
+      24,
+      40
+     ],
+     [
+      25,
+      35
+     ]
+    ]
+   },
+   "B6": {
+    "spawn_turn": 30,
+    "spawn_region": 50,
+    "death_turn": 104,
+    "death_cause": "TURRET",
+    "path": [
+     [
+      30,
+      50
+     ],
+     [
+      31,
+      46
+     ],
+     [
+      32,
+      43
+     ],
+     [
+      33,
+      22
+     ],
+     [
+      34,
+      18
+     ],
+     [
+      35,
+      15
+     ],
+     [
+      101,
+      10
+     ],
+     [
+      102,
+      6
+     ],
+     [
+      103,
+      1
+     ],
+     [
+      104,
+      0
+     ]
+    ]
+   },
+   "B7": {
+    "spawn_turn": 37,
+    "spawn_region": 50,
+    "death_turn": 107,
+    "death_cause": "TURRET",
+    "path": [
+     [
+      37,
+      50
+     ],
+     [
+      38,
+      46
+     ],
+     [
+      39,
+      43
+     ],
+     [
+      40,
+      22
+     ],
+     [
+      41,
+      18
+     ],
+     [
+      42,
+      15
+     ],
+     [
+      51,
+      18
+     ],
+     [
+      52,
+      22
+     ],
+     [
+      53,
+      43
+     ],
+     [
+      54,
+      46
+     ],
+     [
+      55,
+      50
+     ],
+     [
+      101,
+      45
+     ],
+     [
+      102,
+      23
+     ],
+     [
+      103,
+      19
+     ],
+     [
+      104,
+      16
+     ],
+     [
+      105,
+      5
+     ],
+     [
+      106,
+      0
+     ]
+    ]
+   },
+   "B8": {
+    "spawn_turn": 38,
+    "spawn_region": 50,
+    "death_turn": 81,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      38,
+      50
+     ],
+     [
+      39,
+      46
+     ],
+     [
+      40,
+      43
+     ],
+     [
+      41,
+      22
+     ],
+     [
+      42,
+      18
+     ],
+     [
+      43,
+      15
+     ],
+     [
+      52,
+      18
+     ],
+     [
+      53,
+      22
+     ],
+     [
+      54,
+      43
+     ],
+     [
+      55,
+      46
+     ],
+     [
+      56,
+      50
+     ],
+     [
+      57,
+      46
+     ],
+     [
+      58,
+      43
+     ],
+     [
+      59,
+      22
+     ],
+     [
+      60,
+      18
+     ],
+     [
+      61,
+      15
+     ],
+     [
+      67,
+      10
+     ],
+     [
+      68,
+      6
+     ],
+     [
+      70,
+      10
+     ],
+     [
+      71,
+      15
+     ],
+     [
+      72,
+      18
+     ],
+     [
+      73,
+      23
+     ],
+     [
+      74,
+      34
+     ],
+     [
+      75,
+      44
+     ]
+    ]
+   },
+   "B9": {
+    "spawn_turn": 39,
+    "spawn_region": 50,
+    "death_turn": 64,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      39,
+      50
+     ],
+     [
+      40,
+      46
+     ],
+     [
+      41,
+      43
+     ],
+     [
+      42,
+      22
+     ],
+     [
+      43,
+      18
+     ],
+     [
+      44,
+      15
+     ],
+     [
+      61,
+      18
+     ],
+     [
+      62,
+      19
+     ],
+     [
+      63,
+      25
+     ]
+    ]
+   },
+   "B10": {
+    "spawn_turn": 48,
+    "spawn_region": 50,
+    "death_turn": 102,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      48,
+      50
+     ],
+     [
+      49,
+      46
+     ],
+     [
+      50,
+      43
+     ],
+     [
+      51,
+      22
+     ],
+     [
+      52,
+      18
+     ],
+     [
+      53,
+      15
+     ],
+     [
+      67,
+      10
+     ],
+     [
+      68,
+      6
+     ],
+     [
+      70,
+      10
+     ],
+     [
+      71,
+      15
+     ],
+     [
+      72,
+      10
+     ],
+     [
+      73,
+      6
+     ],
+     [
+      101,
+      1
+     ],
+     [
+      102,
+      0
+     ]
+    ]
+   },
+   "B11": {
+    "spawn_turn": 52,
+    "spawn_region": 50,
+    "death_turn": 96,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      52,
+      50
+     ],
+     [
+      56,
+      46
+     ],
+     [
+      57,
+      43
+     ],
+     [
+      58,
+      22
+     ],
+     [
+      59,
+      18
+     ],
+     [
+      60,
+      15
+     ],
+     [
+      67,
+      10
+     ],
+     [
+      68,
+      6
+     ],
+     [
+      70,
+      10
+     ],
+     [
+      71,
+      15
+     ],
+     [
+      72,
+      10
+     ],
+     [
+      73,
+      6
+     ],
+     [
+      78,
+      10
+     ],
+     [
+      79,
+      15
+     ],
+     [
+      80,
+      10
+     ],
+     [
+      81,
+      6
+     ],
+     [
+      82,
+      10
+     ],
+     [
+      83,
+      15
+     ],
+     [
+      84,
+      10
+     ],
+     [
+      85,
+      6
+     ],
+     [
+      87,
+      10
+     ],
+     [
+      88,
+      15
+     ],
+     [
+      89,
+      10
+     ],
+     [
+      90,
+      6
+     ],
+     [
+      91,
+      10
+     ],
+     [
+      92,
+      15
+     ],
+     [
+      93,
+      18
+     ],
+     [
+      94,
+      23
+     ],
+     [
+      95,
+      34
+     ],
+     [
+      96,
+      44
+     ]
+    ]
+   },
+   "B12": {
+    "spawn_turn": 54,
+    "spawn_region": 50,
+    "death_turn": 73,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      54,
+      50
+     ],
+     [
+      55,
+      46
+     ],
+     [
+      56,
+      43
+     ],
+     [
+      57,
+      22
+     ],
+     [
+      58,
+      18
+     ],
+     [
+      59,
+      15
+     ],
+     [
+      67,
+      10
+     ],
+     [
+      68,
+      6
+     ],
+     [
+      70,
+      16
+     ],
+     [
+      71,
+      19
+     ],
+     [
+      72,
+      25
+     ]
+    ]
+   },
+   "B13": {
+    "spawn_turn": 55,
+    "spawn_region": 50,
+    "death_turn": 104,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      55,
+      50
+     ],
+     [
+      56,
+      46
+     ],
+     [
+      57,
+      43
+     ],
+     [
+      58,
+      22
+     ],
+     [
+      59,
+      18
+     ],
+     [
+      60,
+      15
+     ],
+     [
+      67,
+      10
+     ],
+     [
+      68,
+      6
+     ],
+     [
+      79,
+      10
+     ],
+     [
+      80,
+      15
+     ],
+     [
+      81,
+      10
+     ],
+     [
+      82,
+      6
+     ],
+     [
+      83,
+      10
+     ],
+     [
+      84,
+      15
+     ],
+     [
+      85,
+      10
+     ],
+     [
+      86,
+      6
+     ],
+     [
+      88,
+      10
+     ],
+     [
+      89,
+      15
+     ],
+     [
+      90,
+      10
+     ],
+     [
+      91,
+      6
+     ],
+     [
+      95,
+      10
+     ],
+     [
+      96,
+      15
+     ],
+     [
+      97,
+      10
+     ],
+     [
+      98,
+      6
+     ],
+     [
+      99,
+      10
+     ],
+     [
+      100,
+      15
+     ],
+     [
+      101,
+      10
+     ],
+     [
+      102,
+      6
+     ],
+     [
+      103,
+      1
+     ],
+     [
+      104,
+      0
+     ]
+    ]
+   },
+   "B14": {
+    "spawn_turn": 56,
+    "spawn_region": 50,
+    "death_turn": 78,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      56,
+      50
+     ],
+     [
+      57,
+      46
+     ],
+     [
+      58,
+      43
+     ],
+     [
+      59,
+      22
+     ],
+     [
+      60,
+      18
+     ],
+     [
+      61,
+      15
+     ],
+     [
+      67,
+      10
+     ],
+     [
+      68,
+      6
+     ],
+     [
+      71,
+      10
+     ],
+     [
+      72,
+      15
+     ],
+     [
+      73,
+      18
+     ],
+     [
+      74,
+      23
+     ],
+     [
+      75,
+      34
+     ],
+     [
+      76,
+      44
+     ],
+     [
+      77,
+      34
+     ]
+    ]
+   },
+   "B15": {
+    "spawn_turn": 58,
+    "spawn_region": 50,
+    "death_turn": 105,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      58,
+      50
+     ],
+     [
+      59,
+      46
+     ],
+     [
+      60,
+      43
+     ],
+     [
+      61,
+      22
+     ],
+     [
+      62,
+      18
+     ],
+     [
+      63,
+      15
+     ],
+     [
+      67,
+      10
+     ],
+     [
+      68,
+      6
+     ],
+     [
+      71,
+      10
+     ],
+     [
+      72,
+      15
+     ],
+     [
+      73,
+      10
+     ],
+     [
+      74,
+      6
+     ],
+     [
+      79,
+      10
+     ],
+     [
+      80,
+      15
+     ],
+     [
+      81,
+      10
+     ],
+     [
+      82,
+      6
+     ],
+     [
+      83,
+      10
+     ],
+     [
+      84,
+      15
+     ],
+     [
+      85,
+      10
+     ],
+     [
+      86,
+      6
+     ],
+     [
+      89,
+      10
+     ],
+     [
+      90,
+      15
+     ],
+     [
+      91,
+      10
+     ],
+     [
+      92,
+      6
+     ],
+     [
+      95,
+      10
+     ],
+     [
+      96,
+      15
+     ],
+     [
+      97,
+      10
+     ],
+     [
+      98,
+      6
+     ],
+     [
+      99,
+      10
+     ],
+     [
+      100,
+      15
+     ],
+     [
+      101,
+      10
+     ],
+     [
+      102,
+      6
+     ],
+     [
+      103,
+      1
+     ],
+     [
+      104,
+      0
+     ]
+    ]
+   },
+   "B16": {
+    "spawn_turn": 59,
+    "spawn_region": 50,
+    "death_turn": 64,
+    "death_cause": "TURRET",
+    "path": [
+     [
+      59,
+      50
+     ],
+     [
+      60,
+      49
+     ],
+     [
+      61,
+      44
+     ],
+     [
+      62,
+      40
+     ],
+     [
+      63,
+      35
+     ]
+    ]
+   },
+   "B17": {
+    "spawn_turn": 61,
+    "spawn_region": 50,
+    "death_turn": 75,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      61,
+      50
+     ],
+     [
+      62,
+      46
+     ],
+     [
+      63,
+      43
+     ],
+     [
+      64,
+      22
+     ],
+     [
+      65,
+      18
+     ],
+     [
+      66,
+      15
+     ],
+     [
+      67,
+      10
+     ],
+     [
+      68,
+      6
+     ],
+     [
+      71,
+      16
+     ],
+     [
+      72,
+      19
+     ],
+     [
+      73,
+      25
+     ]
+    ]
+   },
+   "B18": {
+    "spawn_turn": 67,
+    "spawn_region": 50,
+    "death_turn": 101,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      67,
+      50
+     ],
+     [
+      68,
+      46
+     ],
+     [
+      69,
+      43
+     ],
+     [
+      70,
+      22
+     ],
+     [
+      71,
+      18
+     ],
+     [
+      72,
+      15
+     ],
+     [
+      73,
+      10
+     ],
+     [
+      74,
+      6
+     ],
+     [
+      80,
+      10
+     ],
+     [
+      81,
+      15
+     ],
+     [
+      82,
+      10
+     ],
+     [
+      83,
+      6
+     ],
+     [
+      90,
+      10
+     ],
+     [
+      91,
+      15
+     ],
+     [
+      92,
+      10
+     ],
+     [
+      93,
+      6
+     ],
+     [
+      96,
+      10
+     ],
+     [
+      97,
+      15
+     ],
+     [
+      98,
+      10
+     ],
+     [
+      99,
+      6
+     ],
+     [
+      100,
+      5
+     ]
+    ]
+   },
+   "B19": {
+    "spawn_turn": 68,
+    "spawn_region": 50,
+    "death_turn": 77,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      68,
+      50
+     ],
+     [
+      69,
+      46
+     ],
+     [
+      70,
+      43
+     ],
+     [
+      71,
+      22
+     ],
+     [
+      72,
+      18
+     ],
+     [
+      73,
+      15
+     ],
+     [
+      74,
+      18
+     ],
+     [
+      75,
+      23
+     ],
+     [
+      76,
+      34
+     ]
+    ]
+   },
+   "B20": {
+    "spawn_turn": 74,
+    "spawn_region": 50,
+    "death_turn": 80,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      74,
+      50
+     ],
+     [
+      75,
+      49
+     ],
+     [
+      76,
+      44
+     ],
+     [
+      77,
+      34
+     ]
+    ]
+   },
+   "B21": {
+    "spawn_turn": 77,
+    "spawn_region": 50,
+    "death_turn": 105,
+    "death_cause": "TURRET",
+    "path": [
+     [
+      77,
+      50
+     ],
+     [
+      78,
+      45
+     ],
+     [
+      79,
+      23
+     ],
+     [
+      80,
+      19
+     ],
+     [
+      81,
+      16
+     ],
+     [
+      82,
+      6
+     ],
+     [
+      83,
+      10
+     ],
+     [
+      84,
+      15
+     ],
+     [
+      85,
+      10
+     ],
+     [
+      86,
+      6
+     ],
+     [
+      91,
+      10
+     ],
+     [
+      92,
+      15
+     ],
+     [
+      93,
+      10
+     ],
+     [
+      94,
+      6
+     ],
+     [
+      96,
+      10
+     ],
+     [
+      97,
+      15
+     ],
+     [
+      98,
+      10
+     ],
+     [
+      99,
+      6
+     ],
+     [
+      100,
+      5
+     ],
+     [
+      104,
+      4
+     ],
+     [
+      105,
+      0
+     ]
+    ]
+   },
+   "B22": {
+    "spawn_turn": 78,
+    "spawn_region": 50,
+    "death_turn": 106,
+    "death_cause": "TURRET",
+    "path": [
+     [
+      78,
+      50
+     ],
+     [
+      79,
+      45
+     ],
+     [
+      80,
+      23
+     ],
+     [
+      81,
+      19
+     ],
+     [
+      82,
+      16
+     ],
+     [
+      83,
+      6
+     ],
+     [
+      100,
+      5
+     ],
+     [
+      104,
+      4
+     ],
+     [
+      105,
+      0
+     ]
+    ]
+   },
+   "B23": {
+    "spawn_turn": 79,
+    "spawn_region": 50,
+    "death_turn": 108,
+    "death_cause": "TURRET",
+    "path": [
+     [
+      79,
+      50
+     ],
+     [
+      80,
+      45
+     ],
+     [
+      81,
+      23
+     ],
+     [
+      82,
+      19
+     ],
+     [
+      83,
+      16
+     ],
+     [
+      84,
+      6
+     ],
+     [
+      100,
+      5
+     ],
+     [
+      104,
+      4
+     ],
+     [
+      105,
+      0
+     ]
+    ]
+   },
+   "B24": {
+    "spawn_turn": 81,
+    "spawn_region": 50,
+    "death_turn": 86,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      81,
+      50
+     ],
+     [
+      82,
+      49
+     ],
+     [
+      83,
+      44
+     ]
+    ]
+   },
+   "B25": {
+    "spawn_turn": 83,
+    "spawn_region": 50,
+    "death_turn": 108,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      83,
+      50
+     ],
+     [
+      84,
+      45
+     ],
+     [
+      85,
+      23
+     ],
+     [
+      86,
+      19
+     ],
+     [
+      87,
+      16
+     ],
+     [
+      88,
+      6
+     ],
+     [
+      100,
+      5
+     ],
+     [
+      104,
+      4
+     ],
+     [
+      105,
+      0
+     ]
+    ]
+   },
+   "B26": {
+    "spawn_turn": 86,
+    "spawn_region": 50,
+    "death_turn": 91,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      86,
+      50
+     ],
+     [
+      87,
+      49
+     ],
+     [
+      88,
+      44
+     ]
+    ]
+   },
+   "B27": {
+    "spawn_turn": 91,
+    "spawn_region": 50,
+    "death_turn": 93,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      91,
+      50
+     ],
+     [
+      92,
+      49
+     ],
+     [
+      93,
+      44
+     ]
+    ]
+   },
+   "B28": {
+    "spawn_turn": 93,
+    "spawn_region": 50,
+    "death_turn": 95,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      93,
+      50
+     ],
+     [
+      94,
+      49
+     ],
+     [
+      95,
+      44
+     ]
+    ]
+   },
+   "B29": {
+    "spawn_turn": 97,
+    "spawn_region": 50,
+    "death_turn": 108,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      97,
+      50
+     ],
+     [
+      98,
+      46
+     ],
+     [
+      99,
+      43
+     ],
+     [
+      100,
+      23
+     ],
+     [
+      101,
+      19
+     ],
+     [
+      102,
+      16
+     ],
+     [
+      103,
+      6
+     ],
+     [
+      104,
+      1
+     ],
+     [
+      105,
+      0
+     ]
+    ]
+   },
+   "B30": {
+    "spawn_turn": 98,
+    "spawn_region": 50,
+    "death_turn": 109,
+    "death_cause": "TURRET",
+    "path": [
+     [
+      98,
+      50
+     ],
+     [
+      99,
+      46
+     ],
+     [
+      100,
+      43
+     ],
+     [
+      101,
+      23
+     ],
+     [
+      102,
+      19
+     ],
+     [
+      103,
+      16
+     ],
+     [
+      104,
+      6
+     ],
+     [
+      105,
+      1
+     ],
+     [
+      106,
+      0
+     ]
+    ]
+   },
+   "B31": {
+    "spawn_turn": 99,
+    "spawn_region": 50,
+    "death_turn": 107,
+    "death_cause": "COMBAT",
+    "path": [
+     [
+      99,
+      50
+     ],
+     [
+      100,
+      46
+     ],
+     [
+      101,
+      43
+     ],
+     [
+      102,
+      23
+     ],
+     [
+      103,
+      19
+     ],
+     [
+      104,
+      16
+     ],
+     [
+      105,
+      5
+     ],
+     [
+      106,
+      0
+     ]
+    ]
+   }
+  }
+ }
+}

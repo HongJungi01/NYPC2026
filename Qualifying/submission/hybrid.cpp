@@ -699,12 +699,47 @@ static bool is_stronghold(const GameMap &M, int region) {
   return std::binary_search(M.strongholds.begin(), M.strongholds.end(), region);
 }
 
+static int choose_center_stronghold(const GameMap &M, const Paths &P,
+                                    int my_hq, int opp_hq) {
+  int best_r = -1;
+  long long best_balance = PINF;
+  long long best_my_dist = PINF;
+  for (int sh : M.strongholds) {
+    if (!reachable(P, my_hq, sh) || !reachable(P, opp_hq, sh)) continue;
+    long long dm = P.dist[my_hq][sh];
+    long long doo = P.dist[opp_hq][sh];
+    long long bal = std::llabs(dm - doo);
+    if (best_r < 0 ||
+        bal < best_balance ||
+        (bal == best_balance && dm < best_my_dist) ||
+        (bal == best_balance && dm == best_my_dist && sh < best_r)) {
+      best_r = sh;
+      best_balance = bal;
+      best_my_dist = dm;
+    }
+  }
+  return best_r;
+}
+
+// Early-attack read derived ONCE per real turn from the observed opponent
+// transition (see compute_hint in the contest I/O block). It is a day-0-only
+// input to gen_cmds: the lookahead rollout passes nullptr and falls back to the
+// static nearest-building prediction.
+//   - spike: opponent army jumped by >= a train batch last turn (production push)
+//   - pred_target[opp suffix] -> the region of MINE that unit is advancing on,
+//     inferred from its motion (dist decreased). Only advancing units appear.
+struct ThreatHint {
+  bool valid = false;
+  bool spike = false;
+  std::map<int, int> pred_target; // opp warrior suffix -> predicted target region
+};
+
 // Generate one day's commands for `side` under `pol`. Side-relative port of the
 // §4a manager decomposition in submission/main.cpp (Economy -> Movement ->
 // Military), reading the two-sided SimState. Produces referee-valid commands.
 static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
                      const Strat &ST, Side side, const Policy &pol, int turn,
-                     bool verbose = false) {
+                     bool verbose = false, const ThreatHint *hint = nullptr) {
   Cmds a;
   int sv = (int)side;
   int my_hq = hq_region_of(M, side);
@@ -716,6 +751,11 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
   std::vector<const Building *> &my_b = wv.my_b;
   const Building *hq = building_at(S, my_hq);
   int my_whp = hq ? HQ_LEVELS[hq->level].warrior_hp : HQ_LEVELS[1].warrior_hp;
+#ifdef DBG_DEF
+  if (verbose && hint)
+    std::cerr << "T" << turn << " HINT spike=" << hint->spike
+              << " pred=" << hint->pred_target.size() << "\n";
+#endif
 
   // Reserve up to work_cap stationary warriors per building as laborers; the
   // rest form the mobile pool.
@@ -783,12 +823,20 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
   const Building *ohq = building_at(S, opp_hq);
   int opp_hq_lvl = (ohq && ohq->side != side) ? ohq->level : 0;
   bool did_hq = false;
+  // C4 (Bot5 / 37881): economy dominance -> proactively buy HQ level (to L3) as
+  // tiebreak insurance -- income ahead ~20:13 AND a banked-gold lead over 600.
+  bool income_dom = side_income(S, side) * 13 >= side_income(S, opposite(side)) * 20 &&
+                    (S.gold[sv] - S.gold[(int)opposite(side)]) > 600;
+  // J3 (74194): when the opponent leads on BOTH bases and army, an HQ upgrade
+  // (~5 warriors of gold) collapses our defense -- skip upgrades, buy army instead.
+  bool deep_behind = wv.opp_b.size() > my_b.size() && wv.opp_army > wv.my_army;
   if (hq && mine[my_hq] >= 1 && enemy[my_hq] == 0) {
     // Keep our HQ level at or above the opponent's: HQ level buys train_cap
     // (out-produce), work_cap (economy), turret + max-HP (defense & tiebreak).
-    bool want = hq->level == 1 || turn >= pol.late_game ||
-                (pol.deep_hq && hq->level < 4) ||
-                (opp_hq_lvl >= hq->level && hq->level < HQ_MAX_LEVEL);
+    bool want = (hq->level == 1 || turn >= pol.late_game ||
+                 (pol.deep_hq && hq->level < 4) ||
+                 (opp_hq_lvl >= hq->level && hq->level < HQ_MAX_LEVEL) ||
+                 (income_dom && hq->level < 3)) && !deep_behind;
     if (hq->level < HQ_MAX_LEVEL && want) {
       int cost = HQ_LEVELS[hq->level + 1].upgrade_cost;
       if (budget >= cost + pol.econ_reserve) {
@@ -804,18 +852,8 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
       did_hq = true;
     }
   }
-  if (!did_hq) {
-    for (const Building *b : my_b) {
-      if (b->type != BType::BASE || b->level >= BASE_MAX_LEVEL || enemy[b->region] > 0)
-        continue;
-      int cost = BASE_LEVELS[b->level + 1].cost;
-      if (mine[b->region] >= b->work_cap() && budget >= cost + pol.econ_reserve) {
-        a.upgrades.push_back(b->region);
-        budget -= cost;
-        break;
-      }
-    }
-  }
+  // C5 (D): base level-ups moved OUT of here to AFTER army production (lower
+  // priority than army) -- see the MilitaryManager tail below.
 
   // -------- MovementManager: defense > fill-labor > expand > rally/attack -----
   int rally = my_hq;
@@ -844,14 +882,26 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
     if (w.hp <= 0 || w.id.side == side) continue;
     int tgt = -1;
     long long bd = PINF;
-    for (const Building *b : my_b) {
-      if (!reachable(P, w.region, b->region)) continue;
-      long long d = P.dist[w.region][b->region];
-      if (d < bd) { bd = d; tgt = b->region; }
+    // Trajectory-predicted target from the observed real-turn motion (day-0 only);
+    // the rollout has no hint and falls through to the static nearest-building rule.
+    if (hint) {
+      auto it = hint->pred_target.find(w.id.num);
+      if (it != hint->pred_target.end() && building_at(S, it->second) &&
+          reachable(P, w.region, it->second)) {
+        tgt = it->second;
+        bd = P.dist[w.region][tgt];
+      }
     }
-    if (tgt < 0) continue; // no reachable building of ours
-    long long d_home = reachable(P, w.region, opp_hq) ? P.dist[w.region][opp_hq] : PINF;
-    if (bd > d_home) continue; // not advancing toward us
+    if (tgt < 0) {
+      for (const Building *b : my_b) {
+        if (!reachable(P, w.region, b->region)) continue;
+        long long d = P.dist[w.region][b->region];
+        if (d < bd) { bd = d; tgt = b->region; }
+      }
+      if (tgt < 0) continue; // no reachable building of ours
+      long long d_home = reachable(P, w.region, opp_hq) ? P.dist[w.region][opp_hq] : PINF;
+      if (bd > d_home) continue; // not advancing toward us
+    }
     incoming[tgt]++;
     if (bd < eta[tgt]) eta[tgt] = bd;
     atk_hps[tgt].push_back(w.hp);
@@ -863,20 +913,27 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
       const Building *wb = building_at(S, w.region);
       if (wb && wb->side == side) laborers.push_back(&w);
     }
-  auto recruit_to = [&](int r, std::vector<const Warrior *> &pool) -> bool {
+  auto recruit_to = [&](int r, std::vector<const Warrior *> &pool,
+                        long long window) -> bool {
     const Warrior *best = nullptr;
     long long bd = PINF;
     for (const Warrior *w : pool) {
       if (w->region == r || !reachable(P, w->region, r)) continue;
+      // Never recall the finishing force off the enemy HQ (backdoor protection):
+      // a unit sieging their HQ races to the kill instead of coming home. Such
+      // units are also ~lane away so the in-time `window` usually excludes them --
+      // this makes the guard explicit regardless of the window.
+      if (w->region == opp_hq) continue;
+      bool at_ohq_edge = false;
+      for (int nb : M.adj[opp_hq]) if (w->region == nb) at_ohq_edge = true;
+      if (at_ohq_edge) continue;
       long long d = P.dist[w->region][r];
-      if (d <= eta[r] && d < bd) { bd = d; best = w; } // must arrive in time
+      if (d <= window && d < bd) { bd = d; best = w; } // arrive before the siege ends
     }
     if (!best || !issue_move(best, r)) return false;
     pool.erase(std::remove(pool.begin(), pool.end(), best), pool.end());
     return true;
   };
-  int my_army_total = 0;
-  for (int c : mine) my_army_total += c;
   // "Winning finish": our force already sitting ON or NEXT TO the enemy HQ
   // out-masses its garrison + turret -- we win the HQ race, so finishing the kill
   // beats retreating. Used to (B) keep these units out of the panic recall and
@@ -891,11 +948,46 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
     for (int nb : M.adj[opp_hq]) forward += mine[nb];
     winning_finish = forward > 0 && forward >= kill_mass;
   }
+  if (winning_finish) {
+    // Units already sieging the enemy HQ must keep racing the kill. Leaving them
+    // in `mobile` lets fill-labor / expansion / rally logic recall them before
+    // the attack manager sees the finish, as in the T67-T70 backdoor log.
+    std::vector<const Warrior *> finishers = mobile;
+    for (const Warrior *w : finishers)
+      if (w->region == opp_hq) drop(w);
+  }
+  enum class BattleMode { ECON_GRIND, ATTACK_COMMIT, SPLIT_ATTACK_DEFEND, DEFENSE_COMMIT };
+  auto near_enemy_hq = [&](int loc) -> bool {
+    if (loc == opp_hq) return true;
+    for (int nb : M.adj[opp_hq])
+      if (loc == nb) return true;
+    return false;
+  };
+  int hq_commit_force = 0;
+  for (const auto &w : S.warriors) {
+    if (w.id.side != side || w.hp <= 0) continue;
+    int loc = (w.state == WState::MOVING) ? w.target : w.region;
+    if (w.state == WState::MOVING && w.target == opp_hq) hq_commit_force++;
+    else if (near_enemy_hq(loc)) hq_commit_force++;
+  }
+  bool hq_commit_active = winning_finish || hq_commit_force >= 10;
+  int hq_defense_pressure = 0;
+  BattleMode battle_mode = hq_commit_active ? BattleMode::ATTACK_COMMIT
+                                            : BattleMode::ECON_GRIND;
+  // A building is threatened when its incoming out-fights garrison+turret and the
+  // wave is within the interception horizon. When a COMMITTED group (>= max(3,
+  // local defense)) is inbound -- corroborated by the trajectory read -- widen the
+  // horizon to the FULL lane so we start stacking defense EARLY (before lane/2),
+  // instead of waiting for the wave to reach the midfield.
   std::vector<const Building *> threatened;
-  for (const Building *b : my_b)
-    if (incoming[b->region] > mine[b->region] + b->turret() &&
-        eta[b->region] <= horizon)
-      threatened.push_back(b);
+  for (const Building *b : my_b) {
+    int r = b->region;
+    int local_def = mine[r] + b->turret();
+    if (incoming[r] <= local_def) continue;
+    bool committed_b = incoming[r] >= std::max(3, local_def);
+    long long b_horizon = committed_b ? lane : horizon;
+    if (eta[r] <= b_horizon) threatened.push_back(b);
+  }
   std::sort(threatened.begin(), threatened.end(),
             [&](const Building *x, const Building *y) {
               bool hx = x->region == my_hq, hy = y->region == my_hq;
@@ -907,67 +999,64 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
     int need = min_defenders_to_hold(atk_hps[r], my_whp, b->turret(), 64);
     int have = mine[r];
     int ps = 0, pl = 0;
-    while (have < need && recruit_to(r, mobile)) { have++; ps++; }   // in-time surplus
+    // A defender helps as long as it arrives before the wave GRINDS the building
+    // down -- the HQ isn't lost on contact, it's sieged over several turns. So the
+    // draft window is eta + the grind time, not just eta; this lets us pull miners
+    // from farther bases (emptying them) that still join the siege defense.
+    long long grind = std::max(1, b->hp / std::max(1, incoming[r] - b->turret()));
+    long long life = (eta[r] < PINF ? eta[r] : 0) + grind;
+    // "Conscription" = pull the MINERS first (they sit at nearby bases and can
+    // reach home in time), emptying bases if need be; then any in-time idle unit.
     if (r == my_hq)
-      while (have < need && recruit_to(r, laborers)) { have++; pl++; } // in-time laborers
-    bool total_mob = false;
-    if (r == my_hq) {
-      int hq_cap = HQ_LEVELS[hq->level].train_cap;
-      // TOTAL MOBILIZATION: an overwhelming wave at the HQ (outnumbers our whole
-      // army, beyond what one turn's emergency training can patch) -> recall
-      // EVERYTHING reachable home, ignoring arrival time and the `need` cap: all
-      // idle surplus + every laborer off mining. (Units already marching can't be
-      // redirected by the engine, so this grabs all the rest.) HQ must not fall.
-      bool overwhelmed =
-          (need - have) > hq_cap && incoming[r] >= std::max(8, my_army_total);
-      if (overwhelmed) {
-        total_mob = true;
-        auto recall = [&](std::vector<const Warrior *> &pool, int &cnt) {
-          std::vector<const Warrior *> snap = pool;
-          for (const Warrior *w : snap) {
-            if (w->region == r || !reachable(P, w->region, r)) continue;
-            // B: never recall a winning finish. Units committed to the kill at the
-            // enemy HQ (on it or adjacent) stay and end the game -- pulling them
-            // home to defend a wave we'd outrace throws away a won game (T85).
-            if (winning_finish) {
-              bool fwd = (w->region == opp_hq);
-              for (int nb : M.adj[opp_hq]) if (w->region == nb) fwd = true;
-              if (fwd) continue;
-            }
-            if (issue_move(w, r)) {
-              pool.erase(std::remove(pool.begin(), pool.end(), w), pool.end());
-              have++; cnt++;
-            }
-          }
-        };
-        recall(mobile, ps);
-        recall(laborers, pl);
-      }
-      hq_threatened = true; hq_need = need; hq_have = have;
-    }
+      while (have < need && recruit_to(r, laborers, life)) { have++; pl++; }
+    while (have < need && recruit_to(r, mobile, life)) { have++; ps++; }
+    // NEED-BOUND conscription (hard rule): the recruit loops above already pulled
+    // in-time defenders up to `need` and NO further -- HQ drafts miners (laborers)
+    // then idle surplus; a base uses idle surplus only (miners keep mining -- base
+    // conscription is intentionally milder than the HQ's). We do NOT total-mobilize
+    // beyond `need`: dragging the whole army home -- including the backdoor force at
+    // the enemy HQ -- throws the race away and loses. Under-defense that need-bound
+    // recruiting + emergency training can't cover is answered by RACING (far units
+    // keep attacking), not by a panic recall.
+    if (r == my_hq) { hq_threatened = true; hq_need = need; hq_have = have; }
 #ifdef DBG_DEF
     if (verbose)
       std::cerr << "T" << turn << " THREAT b=" << r << " incoming=" << incoming[r]
                 << " eta=" << eta[r] << " need=" << need << " have=" << have
                 << " pulled s/l=" << ps << "/" << pl
-                << (total_mob ? " TOTAL_MOB" : "") << "\n";
+                << (r == my_hq ? " HQ" : "") << "\n";
 #endif
   }
-  for (const Building *b : my_b) { // (B) fill labor
-    int r = b->region, cur = std::min(mine[r], b->work_cap());
-    while (cur < b->work_cap()) {
-      const Warrior *w = nearest_mobile(r);
-      if (!w || !issue_move(w, r)) break;
-      cur++;
-    }
+  if (hq_threatened) {
+    long long turns = eta[my_hq] < PINF ? eta[my_hq] : 0;
+    int train_cap = hq ? HQ_LEVELS[hq->level].train_cap : 1;
+    int trainable_def = (int)std::min(10LL, (turns + 1) * train_cap);
+    hq_defense_pressure = std::max(0, hq_need - hq_have - trainable_def);
+    if (hq_defense_pressure >= 4 && !winning_finish)
+      battle_mode = BattleMode::DEFENSE_COMMIT;
+    else if (hq_commit_active)
+      battle_mode = BattleMode::SPLIT_ATTACK_DEFEND;
   }
+  bool suppress_econ_moves =
+      battle_mode == BattleMode::ATTACK_COMMIT ||
+      battle_mode == BattleMode::SPLIT_ATTACK_DEFEND ||
+      battle_mode == BattleMode::DEFENSE_COMMIT;
+  if (!suppress_econ_moves) // don't scatter committed attackers back into mining
+    for (const Building *b : my_b) { // (B) fill labor
+      int r = b->region, cur = std::min(mine[r], b->work_cap());
+      while (cur < b->work_cap()) {
+        const Warrior *w = nearest_mobile(r);
+        if (!w || !issue_move(w, r)) break;
+        cur++;
+      }
+    }
   int inflight = 0; // (C) expand: at most one claim in flight
   for (const auto &w : S.warriors) {
     if (w.id.side != side || w.hp <= 0) continue;
     int loc = (w.state == WState::MOVING) ? w.target : w.region;
     if (is_stronghold(M, loc) && !building_at(S, loc)) inflight++;
   }
-  if (inflight == 0) {
+  if (!suppress_econ_moves && inflight == 0) {
     for (int sh : ST.expand_order[sv]) {
       if (building_at(S, sh) || enemy[sh] > 0) continue;
       const Warrior *w = nearest_mobile(sh);
@@ -992,27 +1081,173 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
     int tr = (b && b->side != side) ? b->turret() : 0;
     int resolver = min_mass_to_take(my_whp, dh, tr, 60);
     int ratio = (region == opp_hq) ? 5 : 4;
+    // Late game the resolver already guarantees the win; the extra ratio is only
+    // follow-up insurance. Shave 1 to force a result rather than a tiebreak stall.
+    if (turn >= pol.late_game) ratio -= 1;
     return std::max({pol.attack_mass, resolver, ratio * ((int)dh.size() + tr)});
   };
-  // I-b (Bot4): if our attack-capable force can already END the game at the HQ
-  // (5:1), aim there -- don't dawdle on bases. Otherwise chip the nearest
-  // still-standing enemy base (F); the HQ is the fallback when none remain.
+  // C2 (Bot4): can we END the game now? Our attack-capable force = idle mobile +
+  // units already marching on enemy/neutral ground.
   int attack_force = (int)mobile.size();
   for (const auto &w : S.warriors) {
     if (w.id.side != side || w.hp <= 0 || w.state != WState::MOVING) continue;
     const Building *tb = building_at(S, w.target);
-    if (!tb || tb->side != side) attack_force++; // marching on enemy/neutral ground
+    if (!tb || tb->side != side) attack_force++;
   }
-  int target = opp_hq;
-  if (attack_force < safe_mass(opp_hq)) {
-    long long tbest = PINF;
+  // If that force can CLEAR the HQ garrison (resolver -- not the 5:1 safety margin),
+  // commit to the HQ to finish instead of chipping another base (Bot4: we stalled a
+  // won game by taking a base). Else chip the nearest still-standing enemy base (F).
+  std::vector<int> ohq_def;
+  for (const auto &w : S.warriors)
+    if (w.hp > 0 && w.id.side != side && w.region == opp_hq) ohq_def.push_back(w.hp);
+  int hq_clear = min_mass_to_take(my_whp, ohq_def,
+                                  (ohq && ohq->side != side) ? ohq->turret() : 0, 64);
+  // J1 refine (42602): counting WORKING miners into the kill force is only safe in
+  // the ENDGAME. Doing it whenever we out-mass (old `dominant`) marched the whole
+  // economy into a distant HQ that piecemeal arrival + enemy retrain could not take
+  // (T74-75 / T166), collapsing our growth. The finish force is otherwise just the
+  // attackable army (idle surplus + units already marching on enemy/neutral ground);
+  // once turns run out (economy no longer pays off) we fold the laborers in too.
+  bool endgame = (MAX_TURN - turn) <= 20;
+  int finish_force = attack_force + (endgame ? (int)laborers.size() : 0);
+  bool can_finish_hq = finish_force >= hq_clear;
+  long long eta_hq_from_rally = reachable(P, rally, opp_hq) ? P.dist[rally][opp_hq] : PINF;
+  int opp_train_cap = (ohq && ohq->side != side) ? HQ_LEVELS[ohq->level].train_cap : 1;
+  int hq_prod_buffer = eta_hq_from_rally < PINF
+                           ? (int)std::min(12LL, eta_hq_from_rally * opp_train_cap)
+                           : 12;
+  int hq_clear_buffered = hq_clear + hq_prod_buffer;
+  bool can_finish_hq_buffered = finish_force >= hq_clear_buffered;
+
+  int key_income_total = 0;
+  bool all_key_income_owned = true;
+  for (int sh : ST.expand_order[sv]) {
+    if (!reachable(P, my_hq, sh) || !reachable(P, opp_hq, sh)) continue;
+    if (P.dist[my_hq][sh] > P.dist[opp_hq][sh]) continue;
+    key_income_total++;
+    const Building *b = building_at(S, sh);
+    if (!b || b->side != side) {
+      all_key_income_owned = false;
+      break;
+    }
+  }
+  if (key_income_total == 0) all_key_income_owned = false;
+  bool gold_ahead = S.gold[sv] >= S.gold[(int)opposite(side)] + 600;
+  int center = choose_center_stronghold(M, P, my_hq, opp_hq);
+  const Building *cb = center >= 0 ? building_at(S, center) : nullptr;
+  bool center_already_secured =
+      cb && cb->side == side && mine[center] >= cb->work_cap();
+  bool center_plan_ok = all_key_income_owned && gold_ahead &&
+                        !hq_threatened && enemy[my_hq] == 0 &&
+                        !winning_finish && !can_finish_hq &&
+                        center >= 0 && !center_already_secured;
+  if (center_plan_ok) {
+    std::vector<const Warrior *> cand;
+    for (const Warrior *w : mobile) {
+      if (w->region == center) continue;
+      if (!reachable(P, w->region, center)) continue;
+      cand.push_back(w);
+    }
+    std::sort(cand.begin(), cand.end(), [&](const Warrior *a, const Warrior *b) {
+      long long da = P.dist[a->region][center];
+      long long db = P.dist[b->region][center];
+      if (da != db) return da < db;
+      return a->id.num < b->id.num;
+    });
+    if ((int)cand.size() >= 7) {
+      int send_n = std::min(7, (int)cand.size());
+      for (int i = 0; i < send_n; ++i) issue_move(cand[i], center);
+    }
+  }
+
+  int opp_base_count = 0;
+  for (const Building *b : wv.opp_b)
+    if (b->type == BType::BASE) opp_base_count++;
+  bool opp_econ_low = side_income(S, opposite(side)) < 120;
+  bool opp_base_low = opp_base_count <= 2;
+  bool enemy_counterwave =
+      incoming[my_hq] >= std::max(5, mine[my_hq] + (hq ? hq->turret() : 0));
+  auto counter_stage_loc = [&](int loc) -> bool {
+    if (!reachable(P, loc, opp_hq) || !reachable(P, loc, my_hq)) return false;
+    if (P.dist[loc][opp_hq] < P.dist[loc][my_hq]) return true;
+    return lane < PINF && P.dist[loc][opp_hq] * 4 <= lane * 3;
+  };
+  int forward_raiders = 0;
+  for (const auto &w : S.warriors) {
+    if (w.id.side != side || w.hp <= 0) continue;
+    int loc = (w.state == WState::MOVING) ? w.target : w.region;
+    if (!reachable(P, loc, opp_hq) || !reachable(P, loc, my_hq)) continue;
+    if (P.dist[loc][opp_hq] >= P.dist[loc][my_hq]) continue;
+    if (lane < PINF && P.dist[loc][opp_hq] > lane / 2) continue;
+    forward_raiders++;
+  }
+  int staged_counter_force = 0;
+  for (const Warrior *w : mobile)
+    if (counter_stage_loc(w->region)) staged_counter_force++;
+  int staged_counter_need = std::max(18, std::min(28, hq_clear / 2 + 8));
+  bool counter_race_hq_ok =
+      enemy_counterwave && can_finish_hq && forward_raiders >= 5;
+  bool staged_counter_hq_ok =
+      enemy_counterwave && can_finish_hq &&
+      attack_force >= staged_counter_need + 4 &&
+      staged_counter_force >= staged_counter_need;
+  bool committed_hq_followthrough =
+      hq_commit_active && can_finish_hq &&
+      battle_mode != BattleMode::DEFENSE_COMMIT;
+  bool hq_assault_ready =
+      winning_finish ||
+      counter_race_hq_ok ||
+      staged_counter_hq_ok ||
+      committed_hq_followthrough ||
+      (can_finish_hq_buffered && (opp_econ_low || opp_base_low) && !enemy_counterwave);
+
+  int target = opp_hq, need_mass = hq_clear_buffered;
+  if (!hq_assault_ready) {
+    long long best_score = -PINF;
+    long long best_dist = PINF;
     for (const Building *b : wv.opp_b) {
       if (b->type != BType::BASE || !reachable(P, rally, b->region)) continue;
       long long d = P.dist[rally][b->region];
-      if (d < tbest) { tbest = d; target = b->region; }
+      long long score = 80LL * b->work_cap() - 3LL * d -
+                        20LL * enemy[b->region] - 10LL * b->turret();
+      if (score > best_score ||
+          (score == best_score && d < best_dist) ||
+          (score == best_score && d == best_dist && b->region < target)) {
+        best_score = score;
+        best_dist = d;
+        target = b->region;
+      }
+    }
+    need_mass = (target == opp_hq) ? hq_clear_buffered : safe_mass(target);
+  }
+  // Counter-race lock: when the opponent commits a large wave to our HQ, do not
+  // pull back units that are already deep on their side. If a large army is staged
+  // forward, convert it straight into an HQ race instead of continuing the base
+  // grind one region at a time.
+  if (enemy_counterwave && !winning_finish && target != my_hq) {
+    std::vector<const Warrior *> counter_attackers;
+    for (const Warrior *w : mobile) {
+      if (waiting_to_build(w) || w->region == target) continue;
+      if (!reachable(P, w->region, target)) continue;
+      bool deep_raider = reachable(P, w->region, opp_hq) &&
+                         reachable(P, w->region, my_hq) &&
+                         P.dist[w->region][opp_hq] < P.dist[w->region][my_hq] &&
+                         (lane >= PINF || P.dist[w->region][opp_hq] <= lane / 2);
+      bool staged_racer =
+          staged_counter_hq_ok && target == opp_hq && counter_stage_loc(w->region);
+      if (!deep_raider && !staged_racer) continue;
+      counter_attackers.push_back(w);
+    }
+    if ((int)counter_attackers.size() >= 3) {
+      std::sort(counter_attackers.begin(), counter_attackers.end(), [&](const Warrior *a, const Warrior *b) {
+        long long da = P.dist[a->region][target];
+        long long db = P.dist[b->region][target];
+        if (da != db) return da < db;
+        return a->id.num < b->id.num;
+      });
+      for (const Warrior *w : counter_attackers) issue_move(w, target);
     }
   }
-  int need_mass = safe_mass(target);
   int enroute = 0;
   for (const auto &w : S.warriors)
     if (w.id.side == side && w.hp > 0 && w.state == WState::MOVING && w.target == target)
@@ -1025,20 +1260,87 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
   // whole surplus army forward instead of stopping after one `need_mass` wave.
   // (The old `enroute < need_mass` throttle left a 40-strong army idle at home
   // and stalled games to a tiebreak loss.)
-  bool launch = economy_ok && rallied + enroute >= need_mass;
-  // C: while our HQ faces a wave we can't outrace, hold the army home to defend
-  // instead of bleeding a sub-critical force forward -- a backdoor push when the
-  // long game is won is a blunder (T74). A genuine winning_finish overrides: then
-  // finishing their HQ wins the race, so we keep streaming the assault (see B).
-  // hq_threatened is only set for a real under-defended incoming wave, so normal
-  // aggression (and the 973-976 anti-idle fix) is untouched.
-  if (hq_threatened && !winning_finish) launch = false;
+  int forward = mine[target];
+  for (int nb : M.adj[target]) forward += mine[nb];
+  int wave_min = std::max(pol.attack_mass, std::min(need_mass, 12));
+  bool breakthrough = forward >= std::max(pol.attack_mass, need_mass / 2);
+  bool launch = economy_ok && (rallied >= wave_min || breakthrough);
+  long long eta_to_target = reachable(P, rally, target) ? P.dist[rally][target] : PINF;
+  bool deadline_push =
+      !hq_threatened && enemy[my_hq] == 0 && eta_to_target < PINF &&
+      (MAX_TURN - turn) <= eta_to_target + 15;
+  bool standoff_push =
+      !hq_threatened && enemy[my_hq] == 0 && my_b.size() >= 2 &&
+      wv.my_army >= 30 && wv.my_army + 3 >= wv.opp_army;
+  bool forced_push = deadline_push || standoff_push;
+  if (forced_push && economy_ok) {
+    int forced_mass = std::max(pol.attack_mass, std::min(need_mass, 12));
+    if (rallied >= forced_mass || breakthrough) launch = true;
+  }
+  if (battle_mode == BattleMode::DEFENSE_COMMIT) launch = false;
+  if ((battle_mode == BattleMode::ATTACK_COMMIT ||
+       battle_mode == BattleMode::SPLIT_ATTACK_DEFEND) &&
+      target == opp_hq && hq_assault_ready &&
+      (winning_finish || counter_race_hq_ok || staged_counter_hq_ok ||
+       rallied >= wave_min))
+    launch = true;
+  // Anti-trickle rule: after an HQ assault stalls, do not donate newly spawned
+  // warriors one by one into turret + retrain. Either finish with the force that
+  // is already there, race a real counterwave, or rebuild a fresh rally wave.
+  if (target == opp_hq && !winning_finish &&
+      !counter_race_hq_ok && !staged_counter_hq_ok) {
+    bool hq_front_can_finish = forward >= hq_clear;
+    if (!hq_front_can_finish && rallied < wave_min) launch = false;
+  }
+  // C1 (Bot4/Bot5): defense and offense are NOT mutually exclusive. The defense
+  // path above already reserved every in-time defender (recruit_to removes them),
+  // so the SURPLUS keeps attacking -- chipping empty/weak bases stays fair game
+  // while we defend. Only hold back a full commit to the FAR enemy HQ while our own
+  // HQ faces a wave we can't outrace and can't finish theirs first (avoids the T74
+  // backdoor). winning_finish (units already at their HQ) or can_finish_hq (we can
+  // clear it now) overrides -> race them to the kill.
+  // G4: also hold the far-HQ commit when the opponent simply out-numbers us -- keep
+  // the army home to defend/consolidate instead of feeding it forward to die.
+  // J2 (74194): a BASE deficit counts as behind too -- press to retake their land.
+  bool behind = wv.opp_army > wv.my_army || wv.opp_b.size() > my_b.size();
+  if (!forced_push && !winning_finish && !hq_assault_ready && (hq_threatened || behind) &&
+      target == opp_hq)
+    launch = false;
+  // 42602: no net-negative attrition while we are NOT out-growing the opponent. A
+  // genuine winning finish (force already at their HQ, or -- when income-ahead /
+  // endgame -- a mass that can clear it) still commits; otherwise, when our gold
+  // INCOME is even-or-behind, stop feeding units forward and consolidate the economy
+  // (T69/T81-82/T97/T122-123). Neutral expansion runs earlier and is not gated here.
+  bool growth_ahead = side_income(S, side) > side_income(S, opposite(side));
+  bool real_finish = winning_finish || (target == opp_hq && hq_assault_ready);
+  if (!forced_push && !real_finish && !growth_ahead) launch = false;
+  if ((winning_finish || counter_race_hq_ok || staged_counter_hq_ok) &&
+      target == opp_hq && hq_assault_ready) {
+    std::vector<const Warrior *> committers = mobile;
+    for (const Warrior *w : committers) {
+      if (waiting_to_build(w) || w->region == target) continue;
+      if (reachable(P, w->region, target)) issue_move(w, target);
+    }
+  }
   std::vector<const Warrior *> snap = mobile;
   for (const Warrior *w : snap) {
     if (waiting_to_build(w) || w->region == target) continue;
     if (w->region == rally) { if (launch) issue_move(w, target); }
     else issue_move(w, rally);
   }
+  // J1 refine (42602/Q3): commit the MINERS to the attack ONLY for a finish that is
+  // already ARRIVED (winning_finish) or in the endgame -- never drag them across a
+  // long lane for a staged march (that was the economy-wrecking T166 assault).
+  if ((winning_finish || (endgame && hq_assault_ready && target == opp_hq)) && launch)
+    for (const Warrior *w : std::vector<const Warrior *>(laborers))
+      if (w->region != target) issue_move(w, target);
+#ifdef DBG_DEF
+  if (verbose)
+    std::cerr << "T" << turn << " ATTACK target=" << target << " need=" << need_mass
+              << " force=" << (rallied + enroute) << " growth_ahead=" << growth_ahead
+              << " real_finish=" << real_finish << " endgame=" << endgame
+              << " launch=" << launch << "\n";
+#endif
 
   // -------- MilitaryManager: emergency defense first, else solvent training -----
   if (hq && HQ_LEVELS[hq->level].train_cap > 0) {
@@ -1070,33 +1372,40 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
     // grace. ARMY_HARD_MAX bounds the O(n^2) combat cost of the lookahead.
     constexpr int ARMY_HARD_MAX = 60;
     long long t_arr = (eta[my_hq] < PINF) ? eta[my_hq] : lane;
-    int parity = std::min(opp_army + 4, ARMY_HARD_MAX);       // don't fall behind
-    int econ_floor = std::max(3, total_cap + pol.army_extra); // economy baseline
-    // H (analysis 38335 Bot3): rush awareness. If the opponent is massing into our
-    // half, drop the paced delay and produce to full parity NOW -- the pacing below
-    // banks gold assuming we can catch up by their arrival, which loses to a rush.
-    int opp_adv = 0;
-    for (const auto &w : S.warriors)
-      if (w.id.side != side && w.hp > 0 && lane < PINF &&
-          reachable(P, w.region, my_hq) && P.dist[w.region][my_hq] < lane / 2)
-        opp_adv++;
-    bool rush = opp_adv >= 4;
+    int parity_buf = std::max(2, 4 - (hq ? hq->turret() : 0)); // turret edge -> smaller buffer
+    int parity = std::min(opp_army + parity_buf, ARMY_HARD_MAX); // don't fall behind
+    int econ_floor = std::max(3, total_cap + pol.army_extra);   // economy baseline
+    // H (analysis 38335 Bot3): rush awareness, now signal-driven. A production SPIKE
+    // (opp drained gold to mass-train, from the real-turn hint) OR a committed group
+    // already advancing on our HQ (incoming[my_hq], trajectory-aware when the hint is
+    // present) means "ramp to parity NOW" -- don't wait for the wave to physically
+    // cross the midfield, which the paced ramp below would lose to.
+    int opp_adv = incoming[my_hq];
+    bool rush = (hint && hint->spike) ||
+                opp_adv >= std::max(3, mine[my_hq] + (hq ? hq->turret() : 0));
+    // C3 (Bot3): match the opponent's army COUNT during their home buildup, not
+    // just once they march. If they out-number us, floor production to track their
+    // count (within ~2, our turret edge) even before the paced ramp would kick in.
+    // J2 (74194): a base deficit also opens production -- out-produce to retake land.
+    bool behind = opp_army > army || wv.opp_b.size() > my_b.size();
     int needed_now = (t_arr >= PINF)
                          ? econ_floor // opp unreachable by land -> no army threat
                      : rush ? parity // rush incoming -> match parity immediately
                          : parity - cap * (int)std::min<long long>(t_arr, parity);
+    if (behind)
+      needed_now = std::max(needed_now, std::min(opp_army, ARMY_HARD_MAX) - 2);
     int cap_army = std::max(econ_floor, needed_now);
     int income_after = WORK_INCOME * std::min(total_cap, army + 1);
     bool sustainable = income_after - UPKEEP_PER_WARRIOR * (army + 1) >= 0;
     bool room = army < cap_army; // paced opponent-tracking cap (see above)
     long long floor = pol.train_reserve + (inflight > 0 ? BASE_BUILD_COST : 0);
-    // Steady production stays solvent (the defense path emergency-trains / total-
-    // mobilizes when actually under attack); cap_army keeps us matching the
-    // opponent as far as our economy can sustain.
+    // Steady production stays solvent (the defense path emergency-trains and
+    // need-bound conscripts when actually under attack); cap_army keeps us matching
+    // the opponent as far as our economy can sustain.
     // I-a (Bot4): economy-first opening -- no steady production until we hold the
     // HQ + 2 bases (>=3 buildings), so early gold buys expansion, not a standing
     // army. A real threat or a detected rush overrides (H / emergency train below).
-    bool econ_open = my_b.size() >= 3 || hq_threatened || rush;
+    bool econ_open = my_b.size() >= 3 || hq_threatened || rush || behind;
     if (a.train_n == 0 && room && sustainable && econ_open &&
         budget >= TRAIN_COST + floor) {
       int n = std::min(cap, (int)((budget - floor) / TRAIN_COST));
@@ -1109,11 +1418,31 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
     // When not threatened and gold piles past a reserve, convert the surplus into
     // army (beyond the paced cap) to PRESS the lead -- it feeds the base-chip
     // attack above. Bounded: spend down to the reserve, train_cap/turn, <= hard max.
-    constexpr long long IDLE_GOLD = 600;
+    // Late-game gold is worth less (no time to spend it), so lower the surplus bar
+    // as turn -> MAX_TURN: ~600 early down to 200 at the horizon, converting more
+    // banked gold into army/pressure instead of dying rich.
+    long long IDLE_GOLD = 200 + 400LL * std::max(0, MAX_TURN - turn) / MAX_TURN;
     if (a.train_n == 0 && !hq_threatened && enemy[my_hq] == 0 && econ_open &&
         army < ARMY_HARD_MAX && budget >= TRAIN_COST + IDLE_GOLD) {
       int n = std::min(cap, (int)((budget - IDLE_GOLD) / TRAIN_COST));
       n = std::min(n, ARMY_HARD_MAX - army);
+      if (n > 0) { a.train_n = n; budget -= (long long)TRAIN_COST * n; }
+    }
+    // Economy-dominant consolidation: once our key income strongholds are owned
+    // and the gold lead is large, keep converting safe surplus into warriors.
+    // This is intentionally after the normal production gates and never overwrites
+    // emergency, parity, or idle-gold training chosen above.
+    if (a.train_n == 0 && all_key_income_owned && gold_ahead &&
+        !hq_threatened && enemy[my_hq] == 0 && army < ARMY_HARD_MAX &&
+        budget >= TRAIN_COST + floor) {
+      int n = std::min(cap, (int)((budget - floor) / TRAIN_COST));
+      n = std::min(n, ARMY_HARD_MAX - army);
+      while (n > 0) {
+        int next_army = army + n;
+        int next_income = WORK_INCOME * std::min(total_cap, next_army);
+        if (next_income - UPKEEP_PER_WARRIOR * next_army >= 0) break;
+        n--;
+      }
       if (n > 0) { a.train_n = n; budget -= (long long)TRAIN_COST * n; }
     }
     // Conservative surplus -> HQ level: once the (paced) standing army is already
@@ -1129,6 +1458,21 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
         a.upgrades.push_back(my_hq);
         budget -= up_cost;
         did_hq = true;
+      }
+    }
+    // C5 (D): base level-ups are LOWER priority than army -- take one only once the
+    // paced army is full and we're safe, with genuine leftover gold (moved here
+    // from the EconomyManager so army production comes first).
+    if (!did_hq && army >= cap_army && !hq_threatened) {
+      for (const Building *b : my_b) {
+        if (b->type != BType::BASE || b->level >= BASE_MAX_LEVEL || enemy[b->region] > 0)
+          continue;
+        int cost = BASE_LEVELS[b->level + 1].cost;
+        if (mine[b->region] >= b->work_cap() && budget >= cost + pol.econ_reserve) {
+          a.upgrades.push_back(b->region);
+          budget -= cost;
+          break;
+        }
       }
     }
   }
@@ -1175,7 +1519,8 @@ static Cmds gen_cmds(const SimState &S, const GameMap &M, const Paths &P,
 // StrategyManager — the top-level coordinator. Sub-managers (Economy/Movement/
 // Military) live in gen_cmds(); here we pick the posture by K-day lookahead.
 static Cmds strategy_manager(const SimState &S0, const GameMap &M, const Paths &P,
-                             const Strat &ST, int turn) {
+                             const Strat &ST, int turn,
+                             const ThreatHint *hint = nullptr) {
   static const Policy CANDS[] = {presets::BALANCED, presets::TURTLE,
                                  presets::RUSH, presets::EXPAND};
 #ifdef USE_INFER
@@ -1197,7 +1542,9 @@ static Cmds strategy_manager(const SimState &S0, const GameMap &M, const Paths &
     SimState s = S0;
     Cmds day0;
     for (int d = 0; d < K; ++d) {
-      Cmds cme = gen_cmds(s, M, P, ST, me, pol, turn + d);
+      // Only day-0 (the actually-emitted command) sees the real-turn threat hint;
+      // rollout days d>0 use the static prediction (the sim advances positions).
+      Cmds cme = gen_cmds(s, M, P, ST, me, pol, turn + d, false, d == 0 ? hint : nullptr);
       Cmds copp = gen_cmds(s, M, P, ST, opp, mirror, turn + d);
       if (d == 0) day0 = cme;
       Cmds &cl = (me == Side::LEFT) ? cme : copp;
@@ -1518,6 +1865,64 @@ static void emit_cmds(const GameMap &M, const Cmds &a) {
   std::cout << "END" << std::endl;
 }
 
+// Early-attack read built ONCE per real turn from the observed opponent transition
+// (live path only -- not exercised by SIM_TEST/OBS_TEST). Persists last turn's opp
+// army count and unit positions and derives, for the current observed state:
+//   - spike: opp army jumped by >= one train batch since last turn (a production push)
+//   - pred_target[suffix]: the region of OURS an advancing opp unit is closing on,
+//     inferred from motion (its distance to that building dropped since last turn).
+// The result is a day-0 hint into strategy_manager/gen_cmds (see ThreatHint).
+struct ThreatTracker {
+  bool have_prev = false;
+  std::vector<int> army_hist;     // opp army over the last <=3 real turns (front=oldest)
+  std::map<int, int> prev_region; // opp suffix -> region last turn
+};
+
+static ThreatHint compute_hint(const SimState &S, const GameMap &M, const Paths &P,
+                               Side me, ThreatTracker &tr) {
+  Side opp = opposite(me);
+  ThreatHint h;
+  int opp_army = 0;
+  std::map<int, int> cur_region;
+  for (const auto &w : S.warriors)
+    if (w.id.side == opp && w.hp > 0) { opp_army++; cur_region[w.id.num] = w.region; }
+  if (tr.have_prev) {
+    h.valid = true;
+    // Production spike = a real military buildup. Per-turn training is capped at
+    // train_cap (1-3), so a genuine "drain gold to mass-train" push shows up as a
+    // multi-turn RAMP, not a one-turn jump -- measure army growth over a short
+    // window. Home-buildup signal: we ramp to parity BEFORE the wave marches.
+    const Building *ohq = building_at(S, hq_region_of(M, opp));
+    int otc = ohq ? HQ_LEVELS[ohq->level].train_cap : 1;
+    if (!tr.army_hist.empty())
+      h.spike = (opp_army - tr.army_hist.front()) >= std::max(3, 2 * otc);
+    std::vector<const Building *> my_b;
+    for (const auto &b : S.buildings)
+      if (b.side == me) my_b.push_back(&b);
+    for (const auto &kv : cur_region) {
+      int sfx = kv.first, cur = kv.second;
+      auto pit = tr.prev_region.find(sfx);
+      if (pit == tr.prev_region.end()) continue; // new spawn -> no motion yet
+      int prev = pit->second;
+      if (prev == cur) continue;                 // stood still this turn
+      int best = -1;
+      long long bestd = PINF;
+      for (const Building *b : my_b) {
+        if (!reachable(P, cur, b->region)) continue;
+        long long dcur = P.dist[cur][b->region];
+        long long dprev = reachable(P, prev, b->region) ? P.dist[prev][b->region] : PINF;
+        if (dcur < dprev && dcur < bestd) { bestd = dcur; best = b->region; } // closing in
+      }
+      if (best >= 0) h.pred_target[sfx] = best;
+    }
+  }
+  tr.have_prev = true;
+  tr.army_hist.push_back(opp_army);
+  if (tr.army_hist.size() > 3) tr.army_hist.erase(tr.army_hist.begin());
+  tr.prev_region = std::move(cur_region);
+  return h;
+}
+
 int main() {
   GameMap M;
   SimState S;
@@ -1525,7 +1930,13 @@ int main() {
   Paths P = calculate_paths(M);
   Strat ST = build_strat(M, P);
   int turn;
+  ThreatTracker g_tr;
+  ThreatHint g_hint;
   while (read_turn_start(turn)) {
+    // Read the opponent's just-observed transition into an early-attack hint before
+    // deciding (freshest motion available is last turn's; ~1-turn lag, in-turn).
+    g_hint = compute_hint(S, M, P, M.my_side, g_tr);
+    const ThreatHint *hint = g_hint.valid ? &g_hint : nullptr;
 #ifdef SCRIPT_BOT
     // Sparring opponent: run a single fixed posture with NO lookahead (reuses the
     // validated gen_cmds). Pick with -DSCRIPT_POLICY=presets::TURTLE etc.
@@ -1533,11 +1944,12 @@ int main() {
 #define SCRIPT_POLICY presets::BALANCED
 #endif
     Cmds a = gen_cmds(S, M, P, ST, M.my_side, SCRIPT_POLICY, turn);
+    (void)hint;
 #else
-    Cmds a = strategy_manager(S, M, P, ST, turn);
+    Cmds a = strategy_manager(S, M, P, ST, turn, hint);
 #endif
 #ifdef DBG_DEF
-    gen_cmds(S, M, P, ST, M.my_side, presets::BALANCED, turn, true); // real-turn threat log
+    gen_cmds(S, M, P, ST, M.my_side, presets::BALANCED, turn, true, hint); // real-turn threat log
 #endif
     emit_cmds(M, a);
     read_turn_result(S, M, a);
