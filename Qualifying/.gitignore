@@ -3,11 +3,10 @@ Logs/**/*.txt
 Logs/**/*.md
 Logs/**/*.json
 
-# 단, 운영 문서는 계속 추적 (업로드되며 git에 유지)
-!Logs/POLICY.md
-!Logs/LEDGER.md
-!Logs/REGRESSION.md
-!Logs/LlmAnalyzer/POLICY.md
+# 단, 운영 문서는 위치 불문 계속 추적 (이름 기준 화이트리스트 — 하위폴더 새 POLICY도 안전)
+!Logs/**/POLICY.md
+!Logs/**/LEDGER.md
+!Logs/**/REGRESSION.md
 
 # 로컬 머신 전용 설정 (권한 등)
 .claude/settings.local.json
