@@ -1,0 +1,24 @@
+{
+  "charts_generated": [
+    "gold_income_by_turn.png",
+    "gold_spend_by_turn.png",
+    "gold_balance_by_turn.png",
+    "alive_warriors_by_turn.png",
+    "trained_warriors_by_turn.png",
+    "warrior_loss_by_turn.png",
+    "building_count_by_turn.png",
+    "building_acquired_by_turn.png",
+    "upgrade_count_by_turn.png",
+    "damage_by_turn.png",
+    "siege_by_turn.png",
+    "map_combat_zones.png",
+    "unit_paths.png"
+  ],
+  "chart_count": 13,
+  "errors": [
+    "matplotlib import failed: ModuleNotFoundError: No module named 'matplotlib'",
+    "PIL fallback failed: ModuleNotFoundError: No module named 'PIL'"
+  ],
+  "renderer": "stdlib_png_fallback",
+  "ok": true
+}

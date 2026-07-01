@@ -1,0 +1,23 @@
+action_type,confidence,description,linked_main_factor,metric_delta,side,turn
+MOVE,0.62,A side MOVE A2 1,ARMY_GAP,,A,1
+MOVE,0.48,B side MOVE B2 93,ARMY_GAP,,B,1
+TRAIN,0.48,B side TRAIN 1,ARMY_GAP,,B,1
+MOVE,0.62,A side MOVE A3 7,ARMY_GAP,,A,2
+UPGRADE,0.62,A side UPGRADE 1,ARMY_GAP,,A,2
+UPGRADE,0.48,B side UPGRADE 93,ARMY_GAP,,B,2
+MOVE,0.48,B side MOVE B3 99,ARMY_GAP,,B,3
+MOVE,0.48,B side MOVE B4 93,ARMY_GAP,,B,3
+UPGRADE,0.62,A side UPGRADE 7,ARMY_GAP,,A,7
+UPGRADE,0.48,B side UPGRADE 99,ARMY_GAP,,B,13
+MOVE,0.48,B side MOVE B4 82,ARMY_GAP,,B,14
+TRAIN,0.62,A side TRAIN 1,ARMY_GAP,,A,18
+MOVE,0.62,A side MOVE A4 18,ARMY_GAP,,A,19
+UPGRADE,0.62,A side UPGRADE 18,ARMY_GAP,,A,22
+UPGRADE,0.48,B side UPGRADE 82,ARMY_GAP,,B,22
+TRAIN,0.48,B side TRAIN 1,ARMY_GAP,,B,24
+MOVE,0.48,B side MOVE B5 85,ARMY_GAP,,B,25
+TRAIN,0.62,A side TRAIN 1,ARMY_GAP,,A,28
+MOVE,0.62,A side MOVE A5 36,ARMY_GAP,,A,29
+TRAIN,0.62,A side TRAIN 1,ARMY_GAP,,A,30
+UPGRADE,0.48,B side UPGRADE 85,ARMY_GAP,,B,30
+CRITICAL_TURN,0.9,병력/건물 격차가 크게 벌어진 후보 턴,ARMY_GAP,"{'turn': 174, 'alive': {'A': 57, 'B': 0}, 'trained': {'A': 0, 'B': 0}, 'losses': {'A': 0, 'B': 1}, 'building_count': {'A': 18, 'B': 10}, 'building_acquired': {'A': 0, 'B': 0}, 'upgrade_count': {'A': 0, 'B': 0}, 'damage_taken': {'A': 2, 'B': 4}, 'siege_done': {'A': 0, 'B': 10}}",A,174

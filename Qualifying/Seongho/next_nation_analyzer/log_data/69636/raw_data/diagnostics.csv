@@ -1,0 +1,2 @@
+confidence,evidence,issue_code,main_factor,priority,recommended_action,side,target_module
+0.72,B side가 병력/건물/골드 우위를 승리 조건으로 전환하지 못함,UNCONVERTED_ADVANTAGE,UNCONVERTED_ADVANTAGE,high,병력/경제 우위가 생긴 시점에 확장보다 본부 압박을 우선하세요.,,strategy_decision

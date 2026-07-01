@@ -1,0 +1,55 @@
+{
+  "result_type": "DRAW",
+  "side": null,
+  "winner": null,
+  "missed_win_side": "B",
+  "main_factor": "UNCONVERTED_ADVANTAGE",
+  "issue_code": "UNCONVERTED_ADVANTAGE",
+  "summary": "무승부지만 B side가 승리로 전환할 여지가 있었습니다. 놓친 핵심 요인은 UNCONVERTED_ADVANTAGE입니다. 근거: B side가 병력/건물/골드 우위를 승리 조건으로 전환하지 못함.",
+  "decisive_turn_range": "193-203",
+  "confidence": 0.72,
+  "evidence": [
+    "B side가 병력/건물/골드 우위를 승리 조건으로 전환하지 못함"
+  ],
+  "counter_evidence": [],
+  "assumption": [
+    "골드와 HP는 로그 이벤트 기반 추정값입니다."
+  ],
+  "needs_review": false,
+  "turning_points": [
+    {
+      "turn": 198,
+      "issue": "UNCONVERTED_ADVANTAGE",
+      "confidence": 0.72
+    }
+  ],
+  "loss_reasons": [],
+  "recommended_action": "병력/경제 우위가 생긴 시점에 확장보다 본부 압박을 우선하세요.",
+  "target_module": "strategy_decision",
+  "priority": "high",
+  "draw_analysis": {
+    "missed_win_side": "B",
+    "main_factor": "UNCONVERTED_ADVANTAGE",
+    "reason_not_converted": "전략적 우위가 있었지만 전선 집중이나 본부 압박이 부족했습니다.",
+    "missed_opportunity_turn": 198,
+    "primary_evidence": "B side가 병력/건물/골드 우위를 승리 조건으로 전환하지 못함",
+    "evidence": [
+      "최종 생존 전사 B:33 / A:12",
+      "최종 건물 수 B:8 / A:9",
+      "첫 공성 B:69 / A:없음",
+      "이벤트 수 B MOVE:969, TRAIN:78, SIEGE:2"
+    ],
+    "what_to_do": [
+      "우위가 생긴 시점에 병력을 한 방향으로 묶어 전선 돌파를 시도합니다.",
+      "피해가 큰 병목 구역을 피하거나, 숫자 우위가 있을 때만 진입합니다.",
+      "마지막 25% 턴 구간에서는 골드 축적보다 공격 생산과 공성 이동을 우선합니다."
+    ],
+    "confidence": 0.72
+  },
+  "alternative_actions": [
+    "우위가 생긴 시점에 병력을 한 방향으로 묶어 전선 돌파를 시도합니다.",
+    "피해가 큰 병목 구역을 피하거나, 숫자 우위가 있을 때만 진입합니다.",
+    "마지막 25% 턴 구간에서는 골드 축적보다 공격 생산과 공성 이동을 우선합니다."
+  ],
+  "unfavorable_phase": "193-203"
+}

@@ -1,0 +1,42 @@
+{
+  "result_type": "WIN",
+  "side": "A",
+  "winner": "B",
+  "missed_win_side": null,
+  "main_factor": "ARMY_GAP",
+  "issue_code": "ARMY_GAP",
+  "summary": "B side가 A side 대비 ARMY_GAP 흐름에서 앞섰습니다. 근거: 병력 수 격차: 9.0.",
+  "decisive_turn_range": "187-197",
+  "confidence": 0.9,
+  "evidence": [
+    "병력 수 격차: 9.0"
+  ],
+  "counter_evidence": [],
+  "assumption": [
+    "골드와 HP는 로그 이벤트 기반 추정값입니다."
+  ],
+  "needs_review": false,
+  "turning_points": [
+    {
+      "turn": 192,
+      "issue": "ARMY_GAP",
+      "confidence": 0.9
+    }
+  ],
+  "loss_reasons": [
+    {
+      "reason": "LOW_TRAINING_VOLUME",
+      "confidence": 0.68,
+      "evidence": "패배 진영 훈련 이벤트가 더 적음"
+    }
+  ],
+  "recommended_action": "훈련 우선순위와 공격 전환 전 최소 병력 조건을 조정하세요.",
+  "target_module": "training_decision",
+  "priority": "high",
+  "draw_analysis": {},
+  "alternative_actions": [
+    "병력 열세가 시작되는 구간에서 훈련 우선순위를 높입니다.",
+    "전투 손실이 누적되는 병목 구역에 소수 병력을 반복 투입하지 않습니다."
+  ],
+  "unfavorable_phase": "187-197"
+}

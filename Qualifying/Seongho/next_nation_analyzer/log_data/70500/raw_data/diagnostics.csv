@@ -1,0 +1,3 @@
+confidence,evidence,issue_code,main_factor,priority,reason,recommended_action,side,target_module
+0.9,병력 수 격차: 9.0,ARMY_GAP,ARMY_GAP,high,,훈련 우선순위와 공격 전환 전 최소 병력 조건을 조정하세요.,A,training_decision
+0.68,패배 진영 훈련 이벤트가 더 적음,LOW_TRAINING_VOLUME,,,LOW_TRAINING_VOLUME,,A,
