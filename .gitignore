@@ -17,3 +17,55 @@ __MACOSX/
 
 # 교차대전 raw referee 로그 (경기당 수천 줄, 대량 — 요약 .md만 커밋, raw는 로컬 분석용)
 **/Logs/Test/raw/
+
+# Python bytecode / caches
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Coverage / test caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.pyre/
+.ipynb_checkpoints/
+.coverage
+.coverage.*
+htmlcov/
+
+# Project run outputs (training / simulation artifacts)
+runs/
+match_logs/
+*.log
+*.out
+*.jsonl
+*.pt
+*.pth
+*.ckpt
+*.onnx
+
+# IDE/editor/system files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Compiled/shared objects and binaries
+*.o
+*.so
+*.dll
+*.dylib
+*.a
+*.lib
+*.exe
