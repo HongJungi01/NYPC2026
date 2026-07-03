@@ -62,9 +62,9 @@ $candExe = Join-Path $scratch "cand.exe"; $baseExe = Join-Path $scratch "base.ex
 Build-Exe $Cand $candExe
 Build-Exe $Base $baseExe
 
-# --- pool: 8-digit snapshots + spar_*, excluding cand/base basenames ---
-$snaps = Get-ChildItem "$sub\*.cpp" | Where-Object { $_.BaseName -match '^\d{8}$' } | ForEach-Object { $_.BaseName }
-$spars = Get-ChildItem "$sub\spar_*.exe" -ErrorAction SilentlyContinue | ForEach-Object { $_.BaseName }
+# --- pool: 8-digit (+optional suffix r/d) snapshots + spar_*, excluding cand/base basenames ---
+$snaps = Get-ChildItem "$sub\*.cpp" | Where-Object { $_.BaseName -match '^\d{8}[a-z]?$' } | ForEach-Object { $_.BaseName }
+$spars = Get-ChildItem "$sub\spar_*.exe","$sub\var_*.exe" -ErrorAction SilentlyContinue | ForEach-Object { $_.BaseName }
 $poolSnaps = $snaps | Where-Object { $_ -ne $candName -and $_ -ne $baseName }
 foreach ($s in $poolSnaps) {
   $exe = Join-Path $sub "$s.exe"; $cpp = Join-Path $sub "$s.cpp"

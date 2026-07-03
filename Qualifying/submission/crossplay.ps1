@@ -29,9 +29,10 @@ $rawBase = Join-Path $outDir "raw"
 if (-not (Test-Path $ref)) { throw "referee not found: $ref (moved? update `$ref in crossplay.ps1)" }
 $env:PATH = "C:\msys64\ucrt64\bin;" + $env:PATH
 
-# Participants: 8-digit snapshots + any baseline that still exists (hybrid retired;
-# main/test were removed by the user -- included only if present).
-$snapshots = Get-ChildItem "$sub\*.cpp" | Where-Object { $_.BaseName -match '^\d{8}$' } |
+# Participants: 8-digit (+optional 1-letter provenance suffix r/d) snapshots + any
+# baseline that still exists (hybrid retired; main/test were removed by the user --
+# included only if present).
+$snapshots = Get-ChildItem "$sub\*.cpp" | Where-Object { $_.BaseName -match '^\d{8}[a-z]?$' } |
              ForEach-Object { $_.BaseName } | Sort-Object
 $baselines = @("main","test") | Where-Object { Test-Path (Join-Path $sub "$_.cpp") }
 $participants = @($snapshots) + @($baselines)
