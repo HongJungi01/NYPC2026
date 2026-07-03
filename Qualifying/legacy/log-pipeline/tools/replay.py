@@ -30,6 +30,7 @@ import argparse
 import json
 import os
 import sys
+from collections import defaultdict
 
 # ---------------------------------------------------------------------------
 # 규칙 상수 (Rule.md 기준 정본)
@@ -289,6 +290,7 @@ def replay(pr):
     siege_log = []           # (turn, side, region, amount)  side = 피해 입은 건물 소속
     hq_pressure = []         # (turn, defender_side, [enemy uids in hq region], siege_dmg)
     hunger_flags = []        # (turn, side, predicted, actual)
+    dispatches = []          # (turn, side, uid, dest, own_bld) — 신규 이동명령 발령 기록(파병 신호용)
 
     def set_first(side, key, turn):
         if key not in timings[side]:
@@ -319,6 +321,7 @@ def replay(pr):
                 if not own_bld:
                     spend[side]["move"] += MOVE_COST
                 moving[side][uid] = dest
+                dispatches.append((t, side, uid, dest, bool(own_bld)))
                 new_moves[side] += 1
                 if dest == hq_region[side]:
                     rally_home[side] += 1
@@ -503,13 +506,14 @@ def replay(pr):
         per_turn.append(snap)
 
     return {
-        "n": n, "k": pr.k, "hq_region": hq_region,
+        "n": n, "k": pr.k, "hq_region": hq_region, "strongholds": pr.strongholds,
         "result": pr.result, "warnings": pr.warnings,
         "units": units, "buildings": buildings,
         "per_turn": per_turn, "timings": timings,
         "building_events": building_events, "combat_log": combat_log,
         "siege_log": siege_log, "hq_pressure": hq_pressure,
         "hunger_flags": hunger_flags, "gold_underflow": gold_underflow,
+        "dispatches": dispatches,
     }
 
 
@@ -523,6 +527,49 @@ def _compress_path(path):
         if not out or out[-1][1] != r:
             out.append((t, r))
     return " -> ".join("%d@t%d" % (r, t) for (t, r) in out)
+
+
+def _build_occupancy(facts, end_turn):
+    """유닛 .path 를 spawn~(사망 or end)까지 forward-fill 해 턴별 구역 점령 재구성.
+    반환 occ[t] = {"A": {region: [uids]}, "B": {region: [uids]}} (생존 구간만 포함).
+    적 수비 병력 카운트(과소 파병·거점 레이스 판정)에 쓰는 결정론적 관찰치."""
+    occ = {}
+    for side in ("A", "B"):
+        for uid, u in facts["units"][side].items():
+            path = u.path
+            if not path:
+                continue
+            last_t = u.death_turn if u.death_turn is not None else end_turn
+            pi = 0
+            for t in range(u.spawn_turn, last_t + 1):
+                while pi + 1 < len(path) and path[pi + 1][0] <= t:
+                    pi += 1
+                r = path[pi][1]
+                occ.setdefault(t, {"A": {}, "B": {}})[side].setdefault(r, []).append(uid)
+    return occ
+
+
+def _garrison(occ, side, region, t):
+    d = occ.get(t)
+    return len(d[side].get(region, [])) if d else 0
+
+
+def _level_at(facts, side, region, t, is_hq=False):
+    """building_events 로 t 시점 레벨·누적 투자골드 재구성.
+    Building 객체의 level 은 이후 재건/업글로 오염될 수 있어(파괴 후 같은 구역 재건이
+    upgrade 이벤트로 기록되는 리플레이 특성) 이벤트 기준으로 재구성한다.
+    재건 시(마지막 build 이후)의 incarnation 만 집계. HQ는 L1에서 시작."""
+    lvl, invested = (1, 0) if is_hq else (0, 0)
+    for (tt, s, r, action, _lvl, cost) in facts["building_events"]:
+        if s != side or r != region or tt > t:
+            continue
+        if action == "build":
+            lvl, invested = 1, cost
+        elif action == "upgrade":
+            lvl += 1
+            invested += cost
+        # repair: 레벨 불변
+    return lvl, invested
 
 
 def _uid_key(uid):
@@ -695,10 +742,167 @@ def derive_signals(facts):
                 junk.append((side, uid, revisit, len(comp)))
     junk.sort(key=lambda x: x[2], reverse=True)
 
+    # 과소·자살 파병 + 거점 선점 레이스 (턴별 점령 재구성 기반)
+    end_turn = pt[-1]["turn"] if pt else 0
+    occ = _build_occupancy(facts, end_turn)
+    strongholds = set(facts.get("strongholds", []))
+    bld = facts["buildings"]
+
+    def enemy_bld_at(owner, region, t):
+        """region 에 owner 건물이 t 시점 살아있으면 (level, turret), 아니면 None."""
+        b = bld[owner].get(region)
+        if b is None or b.built_turn > t:
+            return None
+        if b.destroyed_turn is not None and b.destroyed_turn <= t:
+            return None
+        lvl, _inv = _level_at(facts, owner, region, t, is_hq=b.is_hq)
+        lvl = max(1, lvl)
+        turret = (HQ if b.is_hq else BASE)[lvl]["turret"]
+        return (lvl, turret)
+
+    # --- 파병 웨이브 클러스터링(같은 목적지·근접 발령턴) → 과소·자살 파병 ---
+    bykey = defaultdict(list)
+    for (t, side, uid, dest, own) in facts.get("dispatches", []):
+        if not own:                      # 아군 건물행(무료 rally)은 파병 판정에서 제외
+            bykey[(side, dest)].append((t, uid))
+    DWIN = 2
+    doomed = []
+    for (side, dest), lst in bykey.items():
+        lst.sort()
+        clusters, cur = [], []
+        for (t, uid) in lst:
+            if cur and t - cur[-1][0] > DWIN:
+                clusters.append(cur)
+                cur = []
+            cur.append((t, uid))
+        if cur:
+            clusters.append(cur)
+        enemy = other[side]
+        for cl in clusters:
+            issue_t = cl[0][0]
+            arrivals = []
+            for (_t, uid) in cl:
+                u = facts["units"][side].get(uid)
+                if not u:
+                    continue
+                a = next((tt for (tt, r) in u.path if r == dest and tt >= issue_t), None)
+                if a is not None:
+                    arrivals.append((uid, a))
+            if len(arrivals) < 2:        # 단발 찌르기는 net_loss/objective_race가 처리
+                continue
+            our_force = len(arrivals)
+            t_arr = sorted(a for (_u, a) in arrivals)[len(arrivals) // 2]
+            gar_issue = _garrison(occ, enemy, dest, issue_t)
+            gar_arr = max((_garrison(occ, enemy, dest, tt) for tt in range(t_arr - 1, t_arr + 2)), default=0)
+            garrison = max(gar_issue, gar_arr)
+            eb = enemy_bld_at(enemy, dest, t_arr)
+            losses = sum(1 for (uid, a) in arrivals
+                         if (lambda u: u and u.death_turn is not None
+                             and a <= u.death_turn <= a + 3
+                             and u.death_cause in ("COMBAT", "TURRET"))(facts["units"][side].get(uid)))
+            # 플래그: 도착 병력 ≤ 적 수비 & 실제 전사 & (열세이거나 요새(건물)로 향함)
+            if our_force <= garrison and losses >= 1 and (garrison > our_force or eb is not None):
+                doomed.append({"t": issue_t, "side": side, "dest": dest, "arr": t_arr,
+                               "force": our_force, "garrison": garrison, "gar_issue": gar_issue,
+                               "enemy_bld": eb, "losses": losses, "stronghold": dest in strongholds})
+    doomed.sort(key=lambda d: d["t"])
+
+    # --- 거점 선점 레이스(초반 establish): 먼저 건설한 쪽이 승, 진 쪽 지연 파병이 소모됐나 ---
+    race = []
+    for R in sorted(strongholds):
+        fb = {"A": None, "B": None}
+        for (t, s, r, action, _lvl, _cost) in facts["building_events"]:
+            if r == R and action == "build" and fb[s] is None:
+                fb[s] = t
+        builders = [s for s in ("A", "B") if fb[s] is not None]
+        if len(builders) != 1:           # 아무도/둘 다 건설 → establish 승자 불명확, 보류
+            continue
+        winner = builders[0]
+        loser = other[winner]
+        tb = fb[winner]
+        fp = {"A": None, "B": None}
+        for t in range(0, tb + 9):
+            d = occ.get(t)
+            if not d:
+                continue
+            for s in ("A", "B"):
+                if fp[s] is None and d[s].get(R):
+                    fp[s] = t
+        wasted = []
+        for uid, u in facts["units"][loser].items():
+            a = next((tt for (tt, r) in u.path if r == R), None)
+            if a is None or not (tb - 2 <= a <= tb + 8):
+                continue
+            if u.death_turn is not None and a <= u.death_turn <= a + 4 and u.death_cause in ("COMBAT", "TURRET"):
+                wasted.append((uid, a, u.spawn_turn))
+        if wasted:
+            race.append({"R": R, "winner": winner, "loser": loser, "opp_build": tb,
+                         "opp_arr": fp[winner], "our_arr": fp[loser],
+                         "wasted": sorted(wasted, key=lambda x: x[1])})
+    race.sort(key=lambda x: x["opp_build"])
+
+    # --- 후퇴 헌납: 주둔을 아군 건물로 뺀 직후 기지가 무저항으로 파괴된 케이스 ---
+    RC_BACK, RC_FWD, RC_GMIN = 6, 12, 3
+    retreat_cede = []
+    for side in ("A", "B"):
+        enemy = other[side]
+        for r, b in bld[side].items():
+            td = b.destroyed_turn
+            if td is None or b.is_hq:
+                continue
+            g_before = max((_garrison(occ, side, r, t)
+                            for t in range(max(0, td - RC_BACK), td)), default=0)
+            if g_before < RC_GMIN:
+                continue
+            if _garrison(occ, side, r, td) > 1:
+                continue                      # 수비가 남아 싸우다 짐 → 순손해 교전 소관
+            # 철수 = 창 내 발령, 발령 시 위치 r, 목적지가 (다른) 아군 건물인 디스패치
+            pulled = {}
+            for (t, s, uid, dest, own) in facts.get("dispatches", []):
+                if s != side or not own or dest == r or not (td - RC_BACK <= t <= td):
+                    continue
+                d0, d1 = occ.get(t - 1), occ.get(t)
+                if ((d0 and uid in d0[side].get(r, []))
+                        or (d1 and uid in d1[side].get(r, []))):
+                    pulled[uid] = (t, dest)
+            if len(pulled) < max(2, g_before - 1):
+                continue                      # 대부분이 빠졌을 때만(공격 출격 own=False는 애초 제외)
+            t_pull = min(t for (t, _d) in pulled.values())
+            dests = {}
+            for (_t, d_) in pulled.values():
+                dests[d_] = dests.get(d_, 0) + 1
+            main_dest = max(dests, key=dests.get)
+            wave = max((_garrison(occ, enemy, r, t) for t in range(td - 1, td + 2)), default=0)
+            lvl_td, invested = _level_at(facts, side, r, td)
+            lvl_td = max(1, lvl_td)
+            # 사후 교전: 철수 병력이 짧은 창 내 어차피 싸웠나 (요격 지점만 뒤로 민 정황)
+            fight_later = None
+            pulled_set = set(pulled)
+            for (t, cs, uid, cause, cr, _amt) in facts["combat_log"]:
+                if not (td < t <= td + RC_FWD) or cause != "COMBAT":
+                    continue
+                if cs == side and uid in pulled_set:
+                    fight_later = (t, cr)
+                    break
+                if cs == enemy and cr is not None:
+                    d = occ.get(t)
+                    here = d[side].get(cr, []) if d else []
+                    if sum(1 for u2 in here if u2 in pulled_set) >= 3:
+                        fight_later = (t, cr)
+                        break
+            retreat_cede.append({"t_pull": t_pull, "side": side, "R": r, "level": lvl_td,
+                                 "invested": invested, "garrison": g_before,
+                                 "pulled": len(pulled), "dest": main_dest, "wave": wave,
+                                 "destroyed": td, "fight_later": fight_later,
+                                 "stronghold": r in strongholds})
+    retreat_cede.sort(key=lambda d: d["destroyed"])
+
     sig["orders"] = {"train_burst": train_burst, "move_burst": move_burst,
                      "income_drop": income_drop, "rally_no_threat": rally_no_threat,
                      "futile_train": futile_train, "assaults": assaults,
-                     "trade_total": tot, "net_loss_turns": worst, "junk": junk[:12]}
+                     "trade_total": tot, "net_loss_turns": worst, "junk": junk[:12],
+                     "doomed_dispatch": doomed, "objective_race": race,
+                     "retreat_cede": retreat_cede}
     return sig
 
 
@@ -941,6 +1145,53 @@ def render(facts, basename):
         w("> 각 유닛의 실제 경로는 유닛 궤적표 참조. 왕복=이동비 낭비/회군 정황(단정 말 것).")
     else:
         w("(뚜렷한 왕복 이동 없음)")
+
+    w("")
+    w("### 과소·자살 파병 (도착 병력 ≤ 목적지 적 수비인데 보낸 파병)")
+    if o.get("doomed_dispatch"):
+        w("| 발령 t | 목적지 | 아군 도착 | 적 수비(주둔) | 적 건물 | 아군 전사 |")
+        w("|--:|--:|--:|--:|:--|--:|")
+        for d in o["doomed_dispatch"][:12]:
+            loc = "거점%d" % d["dest"] if d["stronghold"] else "구역%d" % d["dest"]
+            ebs = ("L%d·포탑%d" % d["enemy_bld"]) if d["enemy_bld"] else "-"
+            w("| t%d | %s | %d기 | %d (발령시 %d) | %s | %d |"
+              % (d["t"], loc, d["force"], d["garrison"], d["gar_issue"], ebs, d["losses"]))
+        w("> 도착 병력이 목적지의 적 수비 이하인 파병(수비오더와 겹쳐 일부만 전진한 경우 포함) →")
+        w("> 도착 즉시 순손해. **도착 병력 ≤ 수비면 명백 손해로 단정 가능**(POLICY §4.4).")
+    else:
+        w("(도착 병력이 적 수비 이하인 파병 미검출)")
+
+    w("")
+    w("### 거점 선점 레이스 지연 (템포 손해 후보)")
+    if o.get("objective_race"):
+        for r in o["objective_race"][:8]:
+            oa = "t%d" % r["opp_arr"] if r["opp_arr"] is not None else "t?"
+            ua = "t%d" % r["our_arr"] if r["our_arr"] is not None else "t?"
+            wl = " ".join("%s(도착t%d,생성t%d)" % (u, a, sp) for (u, a, sp) in r["wasted"][:6])
+            w("- 거점%d: **%s 선점**(건설 t%d, 첫도착 %s) vs 우리(%s) 첫도착 %s — 진 뒤 지연 파병 소모: %s"
+              % (r["R"], r["winner"], r["opp_build"], oa, r["loser"], ua, wl))
+        w("> 상대가 거점을 먼저 점령·건설한 뒤 우리 뒤늦은 파병이 그 수비/포탑에 전사한 케이스.")
+        w("> **유휴=채굴/신병 딜레이일 수 있어 후보로만** — 궤적표로 출발 지연(즉시출발 대신 신병 파병 등) 확인.")
+    else:
+        w("(거점 선점 레이스에서 진 뒤 지연 파병 소모 미검출)")
+
+    w("")
+    w("### 후퇴 헌납 후보 (주둔 철수 직후 기지 무저항 상실)")
+    if o.get("retreat_cede"):
+        w("| 철수 t | 기지 | 직전 주둔 | 철수 → 행선 | 적 웨이브 | 파괴 t | 이후 교전(철수 병력) |")
+        w("|--:|:--|--:|:--|--:|--:|:--|")
+        for d in o["retreat_cede"][:8]:
+            loc = ("거점%d" % d["R"]) if d["stronghold"] else ("구역%d" % d["R"])
+            fl = ("t%d @구역%d — **어차피 싸움**" % d["fight_later"]) if d["fight_later"] \
+                else "없음(+%d턴 창)" % 12
+            w("| t%d | %s L%d(투자 %dg) | %d기 | %d기 → 구역%d | %d기 | t%d | %s |"
+              % (d["t_pull"], loc, d["level"], d["invested"], d["garrison"],
+                 d["pulled"], d["dest"], d["wave"], d["destroyed"], fl))
+        w("> 주둔을 아군 건물로 뺀 직후 기지가 무저항 파괴된 케이스. 철수=각개격파 회피(정상)일 수 있으나,")
+        w("> **이후 짧은 창 내 같은 웨이브와 어차피 교전했으면(이후 교전 有) 요격 지점만 뒤로 민 것 —")
+        w("> 기지·포탑 지원만 공짜 상실 = 손해 판정 가능**(POLICY §4.4). 적이 유도(베이트) 가능한 패턴.")
+    else:
+        w("(주둔 철수 직후 기지 상실 미검출)")
     w("")
 
     return "\n".join(L) + "\n"
@@ -959,6 +1210,7 @@ def to_json(facts, basename):
     return json.dumps({
         "basename": basename,
         "n": facts["n"], "k": facts["k"], "hq_region": facts["hq_region"],
+        "strongholds": facts["strongholds"],
         "result": facts["result"],
         "per_turn": facts["per_turn"],
         "timings": facts["timings"],

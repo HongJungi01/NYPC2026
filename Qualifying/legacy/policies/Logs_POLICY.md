@@ -39,6 +39,8 @@
   계산", "빌드업 러쉬 매칭", "수비하며 잉여로 공격" 등은 상수 튜닝이 아니라 새 로직으로 구현.)
 - 반영 대상 코드 = **현재 봇 = 최신 스냅샷** `submission/<MMDDHHmm>.cpp` (hybrid.cpp 은퇴;
   [[../submission/POLICY.md]] 버전관리). 변경 후 새 스냅샷을 만든다.
+  **레거시(HEAD 아닌 봇)는 전면 동결·승패 평가 전용** — 레거시엔 반영하지 않고, 레거시 풀
+  평가를 근거로 기능을 빼지도 않는다(분석 finding 우선; [[../submission/POLICY.md]] §6).
 
 ## 5. hybrid.cpp 수정 지점 매핑 (분석 결과가 떨어지는 곳 — 참조용)
 - `StrategyManager` §4c — posture / K-day lookahead : [hybrid.cpp:1089](../submission/hybrid.cpp#L1089)
