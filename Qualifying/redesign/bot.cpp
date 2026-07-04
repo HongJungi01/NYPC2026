@@ -1414,6 +1414,18 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
   int ohq_tc = (ohq && ohq->side == opp) ? HQ_LEVELS[ohq->level].train_cap : 0; // R11 retrain
   int ohq_whp = HQ_LEVELS[(ohq && ohq->side == opp) ? ohq->level : 1].warrior_hp;
   int ohq_sustain = ohq_tc >= 2 ? std::min<int>(12, (int)(10 * side_income(S, opp) / TRAIN_COST)) : 0;
+  // 행군 중 재훈련 반영: 먼 HQ일수록 도착 전에 상대가 수비를 쌓음(포렌식 70074_5
+  // T94: 12마리를 먼 HQ(10주둔)에 커밋 -> 단발 전멸, 기지를 쳤어야). 도착 시점(웨이브
+  // max ETA)까지 opp가 tc/턴으로 뽑는 수(골드 상한) 만큼 방어를 미리 더해 커밋을
+  // 보수화 -> 미달이면 hq_finishable=false -> 기지 공격으로 폴백.
+  long long hq_eta = 0;
+  for (auto w : army)
+    if (reachable(P, w->region, opp_hq)) hq_eta = std::max(hq_eta, P.dist[w->region][opp_hq]);
+  int march_reinf = (ohq_tc > 0)
+      ? (int)std::min<long long>({(long long)ohq_tc * hq_eta,
+                                  12LL * side_income(S, opp) / TRAIN_COST, 24LL})
+      : 0;
+  for (int i = 0; i < march_reinf; ++i) ohq_def.push_back(ohq_whp);
   int hq_clear = min_mass_to_take(my_whp, ohq_def, ohq_turret, 64, ohq_whp, ohq_tc, ohq_sustain);
   int target = -1, need_mass = 0;
   // HQ 커밋은 보수적으로: 행군 중 재훈련이 방어를 부풀리므로 큰 마진 + 상대 파산일 때만.
