@@ -1508,7 +1508,13 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
   // HQ 커밋은 보수적으로: 행군 중 재훈련이 방어를 부풀리므로 큰 마진 + 상대 파산일 때만.
   // (공격 자살 방지 — 잉여 army는 그 외엔 홈 대기 = 수비·판정 예비.)
   bool opp_broke = side_income(S, opp) < 120;
-  int hq_commit = hq_clear + ((M.N >= 70 && M.N < 100) ? std::max(4, hq_clear / 2) : ((M.N >= 100) ? std::max(4, hq_clear / 2) : std::max(3, hq_clear / 3)));
+  int opp_bases = 0;
+  for (const Building *b : opp_b) if (b->type == BType::BASE) opp_bases++;
+  // 적 거점 전멸(HQ만 잔존) = 적 경제 고사 → 대기하면 turn-200 무승부(73728). 후반엔 결정적으로
+  // 마무리해야 하므로 커밋 마진을 축소한다(정상 상황의 과보수 마진은 원정 자살 방지용이라 유지).
+  long long base_margin = (M.N >= 70) ? std::max(4, hq_clear / 2) : std::max(3, hq_clear / 3);
+  if (opp_bases == 0 && turn >= 150) base_margin = std::max<long long>(2, hq_clear / 6);
+  int hq_commit = hq_clear + (int)base_margin;
   bool hq_finishable = ohq && ohq->side == opp && hq_clear <= 64 &&
                        attack_force >= hq_commit && (opp_broke || attack_force >= hq_clear + ((M.N >= 70 && M.N < 100) ? 8 : ((M.N >= 100) ? 8 : 6)));
   if (hq_finishable) {
@@ -1635,11 +1641,17 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
   // 중 적 기지들까지 거리 '합'이 최소인 곳 = 어느 약체든 짧게 치고 짧게 회수하는 중앙-전방 허브.
   int stage = -1;
   {
+    // 내가 거점을 먹어 전진할수록 rally도 '안전·전방'으로 전진해야 마무리 출발이 빠르다
+    // (73728: rally가 정중앙 52에 고정 → 전군이 후방서 모여 먼 적HQ 104를 못 끝냄 = 무승부).
+    // 후보 = 위협 없는(atk_hps 미포함) 내 건물. 점수 = 남은 적 기지 거리합(없으면 적HQ 거리) 최소
+    // = 최전방·유리 우선. 전방(dmh>doo) 후보는 내가 거점 우위일 때만(열세면 후방 유지 — 홈 노출 방지).
+    bool base_ahead = (int)my_b.size() > (int)opp_b.size();
     long long best = PINF;
     for (const Building *b : my_b) {
       long long dmh = reachable(P, my_hq, b->region) ? P.dist[my_hq][b->region] : PINF;
       long long doo = reachable(P, opp_hq, b->region) ? P.dist[opp_hq][b->region] : PINF;
-      if (doo >= PINF || dmh > doo || atk_hps.count(b->region)) continue; // 안전(우리편/중앙)만
+      if (doo >= PINF || atk_hps.count(b->region)) continue; // 위협받는 곳 제외
+      if (dmh > doo && !base_ahead) continue;                // 전방 rally는 거점 우위일 때만
       long long sum = 0;
       int cnt = 0;
       for (const Building *e : opp_b)
@@ -1647,7 +1659,7 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
           sum += P.dist[b->region][e->region];
           cnt++;
         }
-      long long score = cnt > 0 ? sum : doo; // 적 기지 없으면 전방성으로 폴백
+      long long score = cnt > 0 ? sum : doo; // 적 기지 없으면 적HQ 근접(전방)으로 폴백
       if (score < best) { best = score; stage = b->region; }
     }
   }
@@ -1661,10 +1673,22 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
     for (const Building *b : my_b)
       if (on_my_side(b->region) && garrison_at(b->region) < b->work_cap()) { ourside_full = false; break; }
     if (ourside_full) {
-      std::vector<const Building *> lps(my_b.begin(), my_b.end());
-      std::sort(lps.begin(), lps.end(), [&](const Building *x, const Building *y) {
-        long long dx = reachable(P, x->region, opp_hq) ? P.dist[x->region][opp_hq] : PINF;
-        long long dy = reachable(P, y->region, opp_hq) ? P.dist[y->region][opp_hq] : PINF;
+      // 발사점 = 내 건물(my_b) + '이번 턴 파괴돼 빈 요새에 내 고HP 생존병 주둔' 지점. 후자는
+      // 점령→건설→발사점등록의 1턴 지연(월드모델엔 새 기지가 다음 턴 등장) 때문에 롤을 못 하고
+      // gather로 회수되던 문제(73502 T93: 57 부수고 UPGRADE 57 했는데 my_b 미등록→생존병 52 회수)를
+      // 해결한다. EconomyManager가 정착민 1기를 이미 used(그 자리 기지 건설)해도 남은 고HP 생존병이
+      // 여기서 다음 약체로 즉시 롤 → 57→65 연쇄 성립(발사점 전방이라 아래 need는 '한 거점분').
+      std::vector<int> lps;
+      std::set<int> lp_seen;
+      for (const Building *b : my_b) { lps.push_back(b->region); lp_seen.insert(b->region); }
+      for (auto w : avail(mobile)) {
+        int r = w->region;
+        if (lp_seen.count(r) || !is_sh(r) || building_at(S, r) || w->hp * 2 <= my_whp) continue;
+        lps.push_back(r); lp_seen.insert(r); // 빈 요새 위 고HP 생존병 = 즉석 발사점
+      }
+      std::sort(lps.begin(), lps.end(), [&](int x, int y) {
+        long long dx = reachable(P, x, opp_hq) ? P.dist[x][opp_hq] : PINF;
+        long long dy = reachable(P, y, opp_hq) ? P.dist[y][opp_hq] : PINF;
         return dx < dy; // 가장 전방(opp_hq 근접) 발사점 먼저 → 롤 우선
       });
       auto clear_mass = [&](const Building *b) {
@@ -1673,8 +1697,7 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
           if (w.id.side == opp && w.hp > 0 && w.region == b->region) def.push_back(w.hp);
         return min_mass_to_take(my_whp, def, b->turret(), 64);
       };
-      for (const Building *L : lps) {
-        int lp = L->region;
+      for (int lp : lps) {
         std::vector<const Warrior *> staged; // 이 거점에 모인 고HP 뭉치(동시 출발분)
         for (auto w : avail(mobile))
           if (w->region == lp && w->hp * 2 > my_whp) staged.push_back(w);
