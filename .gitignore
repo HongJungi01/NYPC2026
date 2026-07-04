@@ -69,3 +69,7 @@ match_logs/
 *.a
 *.lib
 *.exe
+
+*.txt
+*.csv
+*.json

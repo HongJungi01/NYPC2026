@@ -35,6 +35,61 @@ def python_player_cmd(path, arg):
         return f"python3 {shlex.quote(path)} {arg}"
     return f"python3 sample-code.py {arg}"
 
+_BINARY_SKIP_EXTS = {'.py', '.js', '.html', '.css', '.md', '.txt', '.log',
+                     '.ini', '.json', '.zip', '.png', '.jpg', '.jpeg', '.gif',
+                     '.command', '.sh', '.bat', '.map', '.gz', '.cpp', '.c', '.h'}
+
+def _binary_matches_platform(path):
+    try:
+        with open(path, 'rb') as f:
+            magic = f.read(4)
+    except Exception:
+        return True
+    if magic[:2] == b'MZ':
+        return sys.platform == 'win32'
+    if magic[:4] == b'\x7fELF':
+        return sys.platform == 'linux'
+    if magic[:4] in (b'\xfe\xed\xfa\xcf', b'\xcf\xfa\xed\xfe',
+                     b'\xfe\xed\xfa\xce', b'\xce\xfa\xed\xfe'):
+        return sys.platform == 'darwin'
+    return True
+
+def pick_bot_binary():
+    """BOT 폴더에서 이 OS에서 실행 가능한 봇 하나를 고른다 (hybrid 우선)."""
+    bot_dir = os.path.join(os.path.dirname(ROOT), "BOT")
+    try:
+        names = sorted(os.listdir(bot_dir))
+    except Exception:
+        return None
+    cands = []
+    for name in names:
+        if name.startswith('.'):
+            continue
+        p = os.path.join(bot_dir, name)
+        if not os.path.isfile(p):
+            continue
+        ext = os.path.splitext(name)[1].lower()
+        if ext in _BINARY_SKIP_EXTS:
+            continue
+        if not (os.access(p, os.X_OK) or ext == '.exe'):
+            continue
+        if not _binary_matches_platform(p):
+            continue
+        cands.append(name)
+    if not cands:
+        return None
+    cands.sort(key=lambda n: (0 if 'hybrid' in n.lower() else 1, n))
+    return os.path.join(bot_dir, cands[0])
+
+def default_ai_cmd(arg):
+    """기본 상대 AI 명령. sample-code.py 가 없으면 BOT 폴더의 실제 봇으로 폴백."""
+    if SAMPLE_CODE:
+        return python_player_cmd(SAMPLE_CODE, arg)
+    b = pick_bot_binary()
+    if b:
+        return f'"{b}"' if sys.platform == 'win32' else shlex.quote(b)
+    return python_player_cmd(None, arg)
+
 # testing-tool.py 위치: 같은 폴더에 없으면 nation-providing/ 에서 탐색
 TOOL = os.environ.get("NN_TOOL") or find_existing([
     os.path.join(ROOT, "testing-tool.py"),
@@ -43,8 +98,8 @@ TOOL = os.environ.get("NN_TOOL") or find_existing([
 ])
 SAMPLE_CODE = find_sample_code()
 DEFAULT_WORKDIR = os.environ.get("NN_WORKDIR") or (os.path.dirname(SAMPLE_CODE) if SAMPLE_CODE else ROOT)
-DEFAULT_EXEC1 = os.environ.get("NN_EXEC1") or python_player_cmd(SAMPLE_CODE, "P1")
-DEFAULT_EXEC2 = os.environ.get("NN_EXEC2") or python_player_cmd(SAMPLE_CODE, "P2")
+DEFAULT_EXEC1 = os.environ.get("NN_EXEC1") or default_ai_cmd("P1")
+DEFAULT_EXEC2 = os.environ.get("NN_EXEC2") or default_ai_cmd("P2")
 
 # --- 실시간 게임 상태 ---
 class Live:
@@ -414,7 +469,8 @@ def main():
         print(f"  → {url}")
         print(f"  testing-tool: {TOOL}")
         print(f"  workdir: {DEFAULT_WORKDIR}")
-        print(f"  sample-code: {SAMPLE_CODE or '(찾지 못함)'}")
+        print(f"  sample-code: {SAMPLE_CODE or '(없음 → BOT 폴더 봇으로 폴백)'}")
+        print(f"  기본 상대 AI: {DEFAULT_EXEC2}")
         print(f"  종료: Ctrl+C")
         if "--open" in sys.argv:
             threading.Timer(0.5, lambda: webbrowser.open(url)).start()
