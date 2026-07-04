@@ -1489,7 +1489,11 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
   // 전원 즉시 발사(주력이 HQ 스폰 공유로 대체로 동위치). eta-스케줄 출발(분산 대기
   // 후 동시수렴)은 실측 악화(4-5-1 -> 3-7-0): 대기 유닛이 수비에 재차출돼 웨이브가
   // 새고, 출발창을 놓친 유닛이 영구 이탈 -> 미달 전력 도착. 즉시 발사가 강건.
-  if (target >= 0 && need_mass <= 64 && !wave_in_flight && attack_force >= need_mass) {
+  // HQ 위협 중엔 기지 공격으로 새 웨이브를 내보내지 않음 — 원정 나가면 소수 수비만
+  // 남아 러쉬에 HQ 함락(포렌식 70074_3: 병력 2배인데 원정 SIEGE 중 레이스 패). 단
+  // 상대 HQ 끝내기(승리 레이스)는 예외로 허용.
+  bool may_launch = !hq_threatened || target == opp_hq;
+  if (target >= 0 && need_mass <= 64 && !wave_in_flight && attack_force >= need_mass && may_launch) {
     for (auto w : army) issue_attack(w, target);
     bs.atk_target = target;
   }
