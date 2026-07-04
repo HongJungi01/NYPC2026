@@ -1460,7 +1460,7 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
   if (!hq_threatened)
     for (const Building *b : my_b) {
       if (b->type != BType::BASE || b->level >= BASE_MAX_LEVEL) continue;
-      if (garrison_at(b->region) < b->work_cap()) continue;
+      if (garrison_at(b->region) < b->work_cap() || enemy_warrior_at(S, b->region, me)) continue; // 적 유닛 있으면 UPGRADE=WA
       int cost = BASE_LEVELS[b->level + 1].cost;
       // C5: 기지 렙업이 HQ fund를 새게 하지 말 것(레거시 t168 base-L3 drain 회귀).
       if (budget >= cost + pol.econ_reserve + 200 + hq_fund) { a.upgrades.push_back(b->region); budget -= cost; break; }
@@ -1725,11 +1725,14 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
       issue_move(w, stage);
     }
   }
-  // 안전망: 중복 UPGRADE 제거 (referee가 같은 구역 중복 명령을 WA 처리)
+  // 안전망: UPGRADE 무효화 방지 — (1) 같은 구역 중복(WA), (2) 적 유닛 있는 구역(건설·렙업·힐
+  // 모두 '적 유닛 존재 시 UPGRADE 불가'=WA=즉시 몰수). 73728 T197 반칙패: 점령 기지 101에 상대
+  // 재훈련병이 다시 진입했는데 렙업 UPGRADE 발령 → RIGHT_WIN WA. 모든 UPGRADE 경로를 여기서 최종 차단.
   {
     std::set<int> seen;
     std::vector<int> u;
-    for (int r : a.upgrades) if (seen.insert(r).second) u.push_back(r);
+    for (int r : a.upgrades)
+      if (!enemy_warrior_at(S, r, me) && seen.insert(r).second) u.push_back(r);
     a.upgrades.swap(u);
   }
   return a;
