@@ -48,6 +48,13 @@ constexpr int BASE_HEAL_COST = 500;
 // apply_result_block. Foundation I/O state; the decision layer (rebuilt) reads it.
 static int g_tokens_left = 5;
 
+// Per-turn wall clock (벽시계 자율보정: 어느 머신이든 그 머신의 실제 경과를 재므로
+// 대회 서버가 느려도 동일 ms 예산으로 컷 -> TLE 방지). main이 턴 시작마다 리셋.
+static std::chrono::steady_clock::time_point g_turn_start;
+static inline double elapsed_ms() {
+  return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - g_turn_start).count();
+}
+
 struct HqLevelEntry {
   int upgrade_cost, warrior_hp, hp, turret, train_cap, work_cap;
 };
@@ -1442,9 +1449,15 @@ static Cmds strategy_manager(const SimState &S0, const GameMap &M, const Paths &
   oppM.opp_hq = hq_region_of(M, me);
   double best = -1e18;
   const Policy *bestP = &cands[0];
+  // 시간 예산: 롤아웃(64 decide+step)은 유닛수²로 커져 후반 실측 148ms/턴 -> 뱅크
+  // 소진 -> TLE 몰수(실전 batch69602 game5 T163). 벽시계로 컷 -> 항상 <100ms.
+  // 뱅크가 얕으면 더 보수적. 정책 사이 + ply 사이 둘 다 체크(최악 오버슛=1 ply).
+  const double budget = g_tokens_left <= 1 ? 30.0 : 45.0;
   for (const Policy &pol : cands) {
+    if (elapsed_ms() > budget) break;
     SimState s = S0;
     for (int d = 0; d < K; ++d) {
+      if (elapsed_ms() > budget) break;
       BotState dme, dopp; // rollout: no prediction tracker (cheap approx, frontier defense)
       Cmds cme = decide(s, M, P, turn + d, dme, pol);
       Cmds copp = decide(s, oppM, P, turn + d, dopp, oppol);
@@ -1468,6 +1481,7 @@ int main() {
   BotState bs;
   int turn;
   while (read_turn_start(turn)) {
+    g_turn_start = std::chrono::steady_clock::now(); // 턴 시간예산 시작
     Cmds a = strategy_manager(S, M, P, turn, bs);
     emit_cmds(M, a);
     read_turn_result(S, M, a);
