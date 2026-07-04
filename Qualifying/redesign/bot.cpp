@@ -1612,8 +1612,7 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
     bool snowball = (int)opp_b.size() > (int)my_b.size();
     bool have_surplus = attack_force >= need_mass + raid_cap;
     bool soft_raid = (target != opp_hq) && (need_mass <= raid_cap) && (snowball || have_surplus);
-    int party = tiebreak_raid ? std::min<int>((int)army.size(), need_mass + 2) // 홈 예비 남기고 최소 발사
-              : soft_raid ? std::min<int>((int)army.size(), std::max(need_mass + 1, raid_cap))
+    int party = soft_raid ? std::min<int>((int)army.size(), std::max(need_mass + 1, raid_cap))
                           : (int)army.size();
     std::vector<const Warrior *> sorted(army.begin(), army.end());
     std::sort(sorted.begin(), sorted.end(), [&](const Warrior *x, const Warrior *y) {
@@ -1633,16 +1632,6 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
       else             issue_attack(sorted[i], target); // 손실 크면 우회로 보존
     }
     bs.atk_target = target;
-  }
-  // tiebreak 레이드 중엔 홈 예비를 my_hq에 고정 — gather가 전방 rally로 끌어 내 HQ를 노출시키는 것
-  // 방지(pin=used → gather 제외). 근처 유휴를 my_hq로 모아 tb_home_keep만큼 확보 = 내 HQ HP 보존.
-  if (tiebreak_raid) {
-    int have = garrison_at(my_hq);
-    for (auto w : avail(mobile)) {
-      if (have >= tb_home_keep) break;
-      if (w->region == my_hq) { used.insert(w->id.num); have++; }
-      else if (turns_to(P, N, w->region, my_hq) <= 3 && issue_move(w, my_hq)) have++;
-    }
   }
   // === 잉여군 배치 ①단계 — 거점 만석(사용자: 먼저 거점에 주둔). 위협 건물 필요 수비수는 pin.
   // 만석은 income 엔진이자 기지 렙업 조건. 웨이브 중에도 계속(경제는 안 멈춘다 — !hq_threatened만).
