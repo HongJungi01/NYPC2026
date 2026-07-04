@@ -936,6 +936,7 @@ static void emit_cmds(const GameMap &M, const Cmds &a) {
 struct BotState {
   std::map<int, int> prev_opp;       // opp suffix -> region last turn
   std::map<int, std::set<int>> pred; // opp suffix -> candidate target regions
+  int atk_target = -1;               // committed attack target (wave commitment, anti-trickle)
 };
 
 // HP-aware partition: fill each building's work_cap with the LOWEST-hp stationary
@@ -1356,18 +1357,32 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
       if (score > best_score) { best_score = score; target = b->region; need_mass = std::max(need, 2); }
     }
   }
-  if (target >= 0 && need_mass <= 64) {
-    int forward = 0;
+  // --- wave commitment: kill the trickle (design: 랠리 폐지·분산 동시수렴) ---------
+  // A wave already in flight to a committed target is NOT reinforced one unit at a
+  // time — single-file arrivals just feed the turret (warriors never heal). New army
+  // holds at home as a defense/finish reserve until the committed wave RESOLVES
+  // (target captured/destroyed, or the wave is spent); only then do we gather and
+  // launch a fresh synchronized wave. This also stabilizes the target across turns.
+  bool wave_in_flight = false;
+  if (bs.atk_target >= 0) {
+    const Building *tb = building_at(S, bs.atk_target);
+    bool tgt_live = tb && tb->side == opp; // not yet captured/destroyed
+    int committed = 0;
     for (const auto &w : S.warriors) {
       if (w.id.side != me || w.hp <= 0) continue;
       int loc = (w.state == WState::MOVING) ? w.target : w.region;
-      if (loc == target) { forward++; continue; }
-      for (int nb : M.adj[target]) if (loc == nb) { forward++; break; }
+      if (loc == bs.atk_target) committed++;
     }
-    // army is co-located (spawns/idle at HQ) -> launching together avoids trickle.
-    // anti-trickle: launch only when forward + army can clear; else hold & accumulate.
-    if (forward + attack_force >= need_mass)
+    if (tgt_live && committed > 0) wave_in_flight = true;
+    else bs.atk_target = -1; // resolved -> free to re-commit
+  }
+  if (target >= 0 && need_mass <= 64 && !wave_in_flight) {
+    // gather at home; launch only when the co-located stationary mass alone can
+    // clear -> all depart together -> arrive together (no trickle, no top-ups).
+    if (attack_force >= need_mass) {
       for (auto w : army) issue_attack(w, target);
+      bs.atk_target = target;
+    }
   }
   // 안전망: 중복 UPGRADE 제거 (referee가 같은 구역 중복 명령을 WA 처리)
   {
