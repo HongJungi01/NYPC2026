@@ -974,7 +974,51 @@ static long long turns_to(const Paths &P, int N, int a, int dest) {
   return n;
 }
 
-static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn, BotState &bs) {
+// ===== value function (design: eval — Tier1 켬, Tier2=0) =====================
+// 종말 잎 = 정확 승패(±). 비종말 잎 = turn-200 추정: HQ HP차(판정)·래더·병력·수입·
+// 만기 골드. Tier2(위치/레이스 시계)는 아직 0.
+static double eval_state(const SimState &s, const GameMap &M, Side me, int turn) {
+  Side opp = opposite(me);
+  const Building *myhq = building_at(s, hq_region_of(M, me));
+  const Building *ohq = building_at(s, hq_region_of(M, opp));
+  if (!myhq) return -1e9 + turn; // 내 HQ 파괴 = 패
+  if (!ohq) return 1e9 - turn;   // 적 HQ 파괴 = 승 (빠를수록 좋음)
+  double sc = 0;
+  sc += 60.0 * (myhq->hp - ohq->hp);
+  sc += 15.0 * ((ohq->max_hp_now() - ohq->hp) - (myhq->max_hp_now() - myhq->hp));
+  sc += 40.0 * (myhq->level - ohq->level); // HQ 래더(판정·생산)
+  double myhp = 0, ohp = 0;
+  for (const auto &w : s.warriors) {
+    if (w.hp <= 0) continue;
+    (w.id.side == me ? myhp : ohp) += w.hp;
+  }
+  sc += 4.0 * (myhp - ohp);
+  sc += 3.0 * (double)(side_income(s, me) - side_income(s, opp)); // 경제전
+  int R = std::max(0, MAX_TURN - turn);
+  sc += 0.05 * (double)(s.gold[(int)me] - s.gold[(int)opp]) * R / MAX_TURN; // 만기 골드
+  return sc;
+}
+
+// Policy = 자유 수(경제/생산/공세 타이밍)의 노브. 값은 레거시 07031646r 프리셋 이식
+// (30회 튜닝된 참고값). 강제 수(수비/끝내기)는 policy-무관.
+struct Policy {
+  int attack_mass;   // 공세 커밋 전 최소 집결 병력
+  int econ_reserve;  // 업글이 이동/훈련 굶기지 않게 남길 골드
+  int train_reserve; // 훈련 후 남길 골드
+  int attack_turn;   // 경제 얇아도 이 턴까진 밀기
+  int late_game;     // 이 턴 이후 판정 대비 HQ HP 은행
+  int army_extra;    // 상비군 상한 = 총 work_cap + 이 값
+  bool deep_hq;      // 중반에도 HQ L2 초과 업글(경제형)
+};
+namespace presets {
+const Policy BALANCED{5, 200, 60, 40, 170, 6, false};
+const Policy TURTLE{8, 350, 60, 90, 150, 10, true};
+const Policy RUSH{3, 80, 0, 18, 175, 3, false};
+const Policy EXPAND{6, 250, 60, 60, 165, 12, true};
+} // namespace presets
+
+static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn, BotState &bs,
+                   const Policy &pol) {
   Cmds a;
   const Side me = M.my_side, opp = opposite(me);
   const int my_hq = M.my_hq, opp_hq = M.opp_hq, N = M.N;
@@ -1168,70 +1212,115 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
     }
   }
 
-  // === [자유·경제] HQ 래더 (최우선): 경제 2배 + 생산 + turret/HP(수비·판정) 번들 ==
-  // 최우선 뱅킹 -> gold가 비용에 닿으면 즉시. L3까지 조기(train_cap 2 = 생산 2배).
-  if (hq && !hq_threatened && hq->level < HQ_MAX_LEVEL) {
-    int opp_lvl = (ohq && ohq->side == opp) ? ohq->level : 1;
-    bool want = hq->level < 3 || opp_lvl >= hq->level || turn >= 150;
+  // === [자유·경제] 레거시 07031646r 빌드오더 이식 =============================
+  auto is_sh = [&](int r) { return std::binary_search(M.strongholds.begin(), M.strongholds.end(), r); };
+  long long lane = reachable(P, my_hq, opp_hq) ? P.dist[my_hq][opp_hq] : PINF;
+  int hq_turret = hq ? hq->turret() : 0;
+  int army_ct = 0, opp_ct = 0, total_cap = 0;
+  for (const auto &w : S.warriors) (w.id.side == me ? army_ct : opp_ct)++;
+  for (auto b : my_b) total_cap += b->work_cap();
+  int incoming_hq = atk_hps.count(my_hq) ? (int)atk_hps[my_hq].size() : 0;
+  bool rush = incoming_hq >= std::max(3, garrison_at(my_hq) + hq_turret);
+  bool behind = opp_ct > army_ct || (int)opp_b.size() > (int)my_b.size();
+
+  // EconomyManager: 정착민이 서 있는 빈 요새에 기지 건설 (거점당 1개만 — 중복 UPGRADE=WA)
+  std::set<int> built_here;
+  for (auto w : avail(mobile)) {
+    int r = w->region;
+    if (!is_sh(r) || building_at(S, r) || enemy_warrior_at(S, r, me) || built_here.count(r)) continue;
+    if (budget < BASE_BUILD_COST) break;
+    a.upgrades.push_back(r);
+    built_here.insert(r);
+    budget -= BASE_BUILD_COST;
+    used.insert(w->id.num);
+  }
+  // HQ 래더 (레거시 C4/C5): L1 / late_game 판정창 / deep_hq 중반 / 적 레벨 추격
+  if (hq && !hq_threatened && garrison_at(my_hq) >= 1 && hq->level < HQ_MAX_LEVEL) {
+    int opp_lvl = (ohq && ohq->side == opp) ? ohq->level : 0;
+    bool want = hq->level == 1 || turn >= pol.late_game || (pol.deep_hq && hq->level < 4) ||
+                (opp_lvl >= hq->level);
     int cost = HQ_LEVELS[hq->level + 1].upgrade_cost;
-    if (want && budget >= cost) { a.upgrades.push_back(my_hq); budget -= cost; }
+    if (want && budget >= cost + pol.econ_reserve) { a.upgrades.push_back(my_hq); budget -= cost; }
   }
-
-  // === [자유·경제] 확장: 이길 수 있는 빈 거점은 다 먹기 (정착민 레이스 가드) =====
-  // 경제가 승부처 -> 아군 유휴는 레이스 이기는 거점으로 계속 확장. 지는 레이스만 스킵.
-  for (int sh : M.strongholds) {
-    if (!reachable(P, my_hq, sh) || building_at(S, sh)) continue;
-    bool inbound = false;
-    long long my_eta = PINF;
-    for (const auto &w : S.warriors) {
-      if (w.id.side != me || w.hp <= 0) continue;
-      if (w.state == WState::MOVING && w.target == sh) { inbound = true; break; }
-      if (!used.count(w.id.num) && w.state == WState::STATIONARY && reachable(P, w.region, sh))
-        my_eta = std::min(my_eta, P.dist[w.region][sh]);
-    }
-    if (inbound) continue;
-    long long enemy_eta = reachable(P, opp_hq, sh) ? P.dist[opp_hq][sh] : PINF;
-    for (const auto &w : S.warriors)
-      if (w.id.side == opp && w.hp > 0 && reachable(P, w.region, sh))
-        enemy_eta = std::min(enemy_eta, P.dist[w.region][sh]);
-    const Warrior *here = nullptr, *near = nullptr;
-    long long best = PINF;
-    for (auto w : avail(mobile)) {
-      if (w->region == sh) { here = w; break; }
-      if (!reachable(P, w->region, sh)) continue;
-      long long d = P.dist[w->region][sh];
-      if (d < best) { best = d; near = w; }
-    }
-    if (here) {
-      used.insert(here->id.num);
-      if (!enemy_warrior_at(S, sh, me) && budget >= BASE_BUILD_COST) { a.upgrades.push_back(sh); budget -= BASE_BUILD_COST; }
-    } else if (near) {
-      if (my_eta > enemy_eta + 30) continue; // clearly lost race -> don't donate settler
-      issue_move(near, sh);
+  // 확장: 동시에 한 정착민만 (inflight). 지는 레이스는 스킵(SETTLER_RACE_MARGIN=2).
+  int inflight = 0;
+  for (const auto &w : S.warriors) {
+    if (w.id.side != me || w.hp <= 0) continue;
+    int loc = (w.state == WState::MOVING) ? w.target : w.region;
+    if (is_sh(loc) && !building_at(S, loc)) inflight++;
+  }
+  bool rusher_hold = rush && (int)my_b.size() >= 2; // 러쉬 중엔 HQ+2에서 확장 멈춤(army first)
+  if (inflight == 0 && !rusher_hold) {
+    const long long RACE = 2;
+    std::vector<int> order;
+    for (int sh : M.strongholds) if (reachable(P, my_hq, sh)) order.push_back(sh);
+    std::sort(order.begin(), order.end(), [&](int x, int y) { return P.dist[my_hq][x] < P.dist[my_hq][y]; });
+    for (int sh : order) {
+      if (building_at(S, sh) || enemy_warrior_at(S, sh, me)) continue;
+      const Warrior *w = nullptr;
+      long long best = PINF;
+      for (auto m2 : avail(mobile)) {
+        if (!reachable(P, m2->region, sh)) continue;
+        long long d = P.dist[m2->region][sh];
+        if (d < best) { best = d; w = m2; }
+      }
+      if (!w) continue;
+      long long enemy_eta = PINF;
+      for (const auto &w2 : S.warriors) {
+        if (w2.id.side == me || w2.hp <= 0) continue;
+        int loc2 = (w2.state == WState::MOVING) ? w2.target : w2.region;
+        if (reachable(P, loc2, sh)) enemy_eta = std::min(enemy_eta, P.dist[loc2][sh]);
+      }
+      if (enemy_eta + RACE <= P.dist[w->region][sh]) continue; // clearly lost race
+      issue_move(w, sh);
+      break; // 한 정착민만
     }
   }
-
-  // 기지 레벨업: 채울 노동자 있을 때만 (work_cap 확장)
+  // MilitaryManager: parity-paced 상비군 (econ_open 게이트, 적 도착까지 페이싱)
+  if (hq && a.train_n == 0) {
+    int cap = HQ_LEVELS[hq->level].train_cap;
+    const int ARMY_HARD_MAX = 60;
+    long long t_arr = wave_eta.count(my_hq) ? wave_eta[my_hq]
+                      : (lane < PINF ? turns_to(P, N, my_hq, opp_hq) : PINF);
+    int parity_buf = std::max(2, 4 - hq_turret);
+    int parity = std::min(opp_ct + parity_buf, ARMY_HARD_MAX);
+    int econ_floor = std::max(3, total_cap + pol.army_extra);
+    int needed_now = (t_arr >= PINF) ? econ_floor
+                     : rush ? parity
+                            : parity - cap * (int)std::min<long long>(t_arr, parity);
+    if (behind) needed_now = std::max(needed_now, std::min(opp_ct, ARMY_HARD_MAX) - 2);
+    int cap_army = std::max(econ_floor, needed_now);
+    int income_after = WORK_INCOME * std::min(total_cap, army_ct + 1);
+    bool sustainable = income_after - UPKEEP_PER_WARRIOR * (army_ct + 1) >= 0;
+    bool room = army_ct < cap_army;
+    long long floor = pol.train_reserve + (inflight > 0 ? BASE_BUILD_COST : 0);
+    size_t open_bases = rush ? 2 : 3; // 경제-우선 오프닝: HQ+3 전엔 상비군 없음
+    if (M.N >= 90) open_bases += 1;
+    else if (M.N <= 63) open_bases = std::min(open_bases, (size_t)2);
+    bool econ_open = my_b.size() >= open_bases || hq_threatened || rush || behind;
+    if (room && sustainable && econ_open && budget >= TRAIN_COST + floor) {
+      int n = (int)std::min<long long>(cap, (budget - floor) / TRAIN_COST);
+      n = std::min(n, cap_army - army_ct);
+      if (n > 0) { a.train_n = n; budget -= (long long)TRAIN_COST * n; }
+    }
+    // idle-gold: 안전+골드 잉여면 상한 넘어 병력 전환 (레거시 E; 후반 덜 쟁임)
+    if (a.train_n == 0 && !hq_threatened && incoming_hq == 0 && army_ct < ARMY_HARD_MAX && econ_open) {
+      long long idle = 200 + 400LL * std::max(0, MAX_TURN - turn) / MAX_TURN;
+      if (budget >= TRAIN_COST + idle) {
+        int n = (int)std::min<long long>(cap, (budget - idle) / TRAIN_COST);
+        n = std::min(n, ARMY_HARD_MAX - army_ct);
+        if (n > 0) { a.train_n = n; budget -= (long long)TRAIN_COST * n; }
+      }
+    }
+  }
+  // 기지 레벨업 (army 뒤, 채울 노동자 있을 때만; work_cap 확장)
   if (!hq_threatened)
     for (const Building *b : my_b) {
       if (b->type != BType::BASE || b->level >= BASE_MAX_LEVEL) continue;
       if (garrison_at(b->region) < b->work_cap()) continue;
       int cost = BASE_LEVELS[b->level + 1].cost;
-      if (budget >= cost + 300) { a.upgrades.push_back(b->region); budget -= cost; break; }
+      if (budget >= cost + pol.econ_reserve + 200) { a.upgrades.push_back(b->region); budget -= cost; break; }
     }
-  // 상비군 생산 (최우선): 상대보다 많게 유지. 병력 열세 = 압살이므로 골드를 병력으로.
-  // (HQ 래더는 위에서 gold 남을 때 먼저 먹으므로, 여기선 잔여를 병력으로 최대 전환.)
-  if (hq && a.train_n == 0) {
-    int army_ct = 0, opp_ct = 0, total_cap = 0;
-    for (const auto &w : S.warriors) (w.id.side == me ? army_ct : opp_ct)++;
-    for (auto b : my_b) total_cap += b->work_cap();
-    int cap_army = std::min(55, std::max(total_cap + 4, opp_ct + 4)); // 상대 +4 목표
-    long long idle = 100;
-    if (army_ct < cap_army && budget >= TRAIN_COST + idle) {
-      int n = (int)std::min<long long>({(long long)train_cap, (budget - idle) / TRAIN_COST, (long long)(cap_army - army_ct)});
-      if (n > 0) { a.train_n = n; budget -= (long long)TRAIN_COST * n; }
-    }
-  }
 
   // === [강제] 끝내기 + 타깃선정(가치/비용) + anti-trickle (잉여 army) ===========
   std::vector<const Warrior *> army = avail(mobile);
@@ -1280,7 +1369,47 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
     if (forward + attack_force >= need_mass)
       for (auto w : army) issue_attack(w, target);
   }
+  // 안전망: 중복 UPGRADE 제거 (referee가 같은 구역 중복 명령을 WA 처리)
+  {
+    std::set<int> seen;
+    std::vector<int> u;
+    for (int r : a.upgrades) if (seen.insert(r).second) u.push_back(r);
+    a.upgrades.swap(u);
+  }
   return a;
+}
+
+// ===================== StrategyManager: 잉여배분 롤아웃 (Phase 3) =============
+// 자유 수(Policy)를 K턴 롤아웃(정확 시뮬 재사용)해 value function으로 채점 -> 최선 선택.
+// 강제 수(수비/끝내기)는 policy-무관하게 decide 안에서 결정 -> 롤아웃은 잉여배분만 탐색.
+// 상대는 고정 BALANCED(우리 복사본=미러 아님) -> 무승부 편향·맹점공유 회피(설계 디테일1 MAP판).
+static Cmds strategy_manager(const SimState &S0, const GameMap &M, const Paths &P, int turn,
+                             BotState &bs) {
+  const Side me = M.my_side, opp = opposite(me);
+  const int K = std::max(1, std::min(MAX_TURN - turn, 8)); // credible horizon
+  const Policy cands[] = {presets::BALANCED, presets::TURTLE, presets::RUSH, presets::EXPAND};
+  const Policy oppol = presets::BALANCED;
+  GameMap oppM = M;
+  oppM.my_side = opp;
+  oppM.my_hq = hq_region_of(M, opp);
+  oppM.opp_hq = hq_region_of(M, me);
+  double best = -1e18;
+  const Policy *bestP = &cands[0];
+  for (const Policy &pol : cands) {
+    SimState s = S0;
+    for (int d = 0; d < K; ++d) {
+      BotState dme, dopp; // rollout: no prediction tracker (cheap approx, frontier defense)
+      Cmds cme = decide(s, M, P, turn + d, dme, pol);
+      Cmds copp = decide(s, oppM, P, turn + d, dopp, oppol);
+      Cmds &cl = (me == Side::LEFT) ? cme : copp;
+      Cmds &cr = (me == Side::LEFT) ? copp : cme;
+      step(s, M, P, cl, cr);
+      if (!building_at(s, hq_region_of(M, me)) || !building_at(s, hq_region_of(M, opp))) break;
+    }
+    double e = eval_state(s, M, me, turn + K);
+    if (e > best) { best = e; bestP = &pol; }
+  }
+  return decide(S0, M, P, turn, bs, *bestP); // 실턴: live 예측 + 최선 policy
 }
 
 // ===================== live main (clean-room) ================================
@@ -1292,7 +1421,7 @@ int main() {
   BotState bs;
   int turn;
   while (read_turn_start(turn)) {
-    Cmds a = decide(S, M, P, turn, bs);
+    Cmds a = strategy_manager(S, M, P, turn, bs);
     emit_cmds(M, a);
     read_turn_result(S, M, a);
 #ifdef BOTDBG
