@@ -1631,15 +1631,24 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
       }
     }
   }
-  // === 전방 stage 산정 — 잉여를 모을 '한 거점'(가장 전방인 안전 아군 건물). 위협받는 건물 제외.
+  // === rally 산정 — 잉여를 모을 '맵 전체에 유효한 집결지': 안전 아군 건물(우리편/중앙, 위협 없음)
+  // 중 적 기지들까지 거리 '합'이 최소인 곳 = 어느 약체든 짧게 치고 짧게 회수하는 중앙-전방 허브.
   int stage = -1;
   {
-    long long best_fwd = PINF;
+    long long best = PINF;
     for (const Building *b : my_b) {
-      long long doo = reachable(P, b->region, opp_hq) ? P.dist[b->region][opp_hq] : PINF;
       long long dmh = reachable(P, my_hq, b->region) ? P.dist[my_hq][b->region] : PINF;
-      if (doo >= PINF || dmh > doo || atk_hps.count(b->region)) continue;
-      if (doo < best_fwd) { best_fwd = doo; stage = b->region; }
+      long long doo = reachable(P, opp_hq, b->region) ? P.dist[opp_hq][b->region] : PINF;
+      if (doo >= PINF || dmh > doo || atk_hps.count(b->region)) continue; // 안전(우리편/중앙)만
+      long long sum = 0;
+      int cnt = 0;
+      for (const Building *e : opp_b)
+        if (e->type == BType::BASE && reachable(P, b->region, e->region)) {
+          sum += P.dist[b->region][e->region];
+          cnt++;
+        }
+      long long score = cnt > 0 ? sum : doo; // 적 기지 없으면 전방성으로 폴백
+      if (score < best) { best = score; stage = b->region; }
     }
   }
   // === 로밍 harass 웨이브(사용자, 순이득 확인): 잉여를 '한 거점'에 모아 리졸버 need(가까운 약체 2개
@@ -1681,8 +1690,13 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
         }
         if (weak.empty()) continue;
         std::sort(weak.begin(), weak.end(), [](auto &x, auto &y) { return x.first < y.first; });
+        // 발사점이 전방(방금 점령한 적진측 거점)=롤: 다음 한 거점분만(생존 뭉치가 그대로 이어감).
+        // 후방 rally 발사=초기: 두 거점분(두 개 부술 만큼 보냄 — 사용자). 그래야 b1 파괴 후 생존병이
+        // b2로 롤(그 다음 공격)로 이어지고, 더 칠 약체가 없을 때만 아래 회수로 빠진다.
+        long long lp_dmh = reachable(P, my_hq, lp) ? P.dist[my_hq][lp] : PINF;
+        long long lp_doo = reachable(P, opp_hq, lp) ? P.dist[opp_hq][lp] : PINF;
         int need = clear_mass(weak[0].second);
-        if (weak.size() >= 2) need += clear_mass(weak[1].second); // 가까운 약체 2개 합
+        if (lp_dmh <= lp_doo && weak.size() >= 2) need += clear_mass(weak[1].second);
         need = std::max(2, need + 1);
         if ((int)staged.size() >= need) { // 발사점에 need만큼 모임 → 한 번에
           for (int i = 0; i < need && i < (int)staged.size(); ++i)
@@ -1693,17 +1707,21 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
       }
     }
   }
-  // === 잉여 집결(gather) — 고HP 잉여를 stage로 모은다. 웨이브 중에도 계속(HQ 적치 방지 — 적 거점이
-  // 멀어 HQ에 쌓을 이유 없음, 사용자). 홈 예비는 최소만. 이 집결분이 위 harass의 발사 뭉치가 된다.
+  // === 잉여 집결/회수(gather) — 고HP 잉여를 rally로 모은다. 후방뿐 아니라 '전방 점령거점에 남은
+  // 생존병'도 rally로 회수(눌러앉음 방지) → 사이클 성립: 치고 → rally 복귀 → 재집결 → 다시 치기.
+  // (roll은 위 harass가 먼저 처리 = 이동중이라 여기 회수 대상 아님. 저HP는 hit&return 노동 차출.)
+  // 웨이브 중에도 계속. 홈 최소 예비만.
   if (!hq_threatened && stage >= 0 && stage != my_hq && (int)my_b.size() > (int)opp_b.size()) {
-    long long stage_doo = reachable(P, stage, opp_hq) ? P.dist[stage][opp_hq] : PINF;
     int reserve = std::max(1, hq_turret); // HQ 최소 예비(반응 수비는 draft가 담당)
     int kept = 0;
     for (auto w : avail(mobile)) {
-      if (w->hp * 2 <= my_whp) continue;                                    // 저HP=hit&return 회수
-      long long dcur = reachable(P, w->region, opp_hq) ? P.dist[w->region][opp_hq] : PINF;
-      if (dcur <= stage_doo) continue;                                      // 이미 stage거나 더 전방
-      if (kept < reserve) { kept++; continue; }                            // 홈 최소 예비
+      if (w->hp * 2 <= my_whp) continue;         // 저HP=hit&return 노동 차출
+      if (w->region == stage) continue;          // 이미 rally
+      // 공성 중(적 건물 위)이면 회수 금지 — 수비만 죽이고 안 부순 채 복귀하는 버그 방지.
+      // 건물 파괴 후엔 빈 요새 → EconomyManager가 우리 기지 건설, 그 다음 잉여만 회수(73314_5).
+      const Building *wb = building_at(S, w->region);
+      if (wb && wb->side == opp) continue;
+      if (kept < reserve) { kept++; continue; }  // 홈 최소 예비
       issue_move(w, stage);
     }
   }
