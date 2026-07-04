@@ -1161,6 +1161,13 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
           long long d = P.dist[w.region][B];
           if (d < bd) { bd = d; tgt = B; }
         }
+    // "전진 중" 게이트 (레거시): 아직 자기 HQ에 더 가까우면 위협 아님. 턴1 상대 첫
+    // 이동(HQ->인접)은 확장이든 공격이든 첫 스텝이 같아 모호 -> 내 HQ 공격 오판 +
+    // 불필요 비상훈련(2번째 기지 밀림). 중간선을 넘어와야(전진) 위협으로 계상.
+    if (tgt >= 0) {
+      long long d_home = reachable(P, w.region, opp_hq) ? P.dist[w.region][opp_hq] : PINF;
+      if (bd > d_home) tgt = -1;
+    }
     // frontier 폴백: "이동 중"인 유닛만 침입 의도로 간주. 정지 유닛은 의도 해소
     // (내 쪽에 앉은 상대 기지 노동자를 영구 공격자로 오인하는 유령 차단).
     if (tgt < 0 && w.state == WState::MOVING && on_my_side(w.region))
@@ -1348,7 +1355,11 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
     size_t open_bases = rush ? 2 : 3; // 경제-우선 오프닝: HQ+3 전엔 상비군 없음
     if (M.N >= 90) open_bases += 1;
     else if (M.N <= 63) open_bases = std::min(open_bases, (size_t)2);
-    bool econ_open = my_b.size() >= open_bases || hq_threatened || rush || behind;
+    // 경제-우선 오프닝은 "기지 뒤짐"으로 깨지 말 것: 상대가 2번째 기지를 한 턴
+    // 먼저 지으면 behind(기지 OR)가 켜져 open_bases 전에 병력을 뽑아 내 다음 기지가
+    // 밀림(사용자 관측: 2기지 전 유닛 1개 -> 15골드×4턴 손해). 조기 개방은 실제
+    // 위협(상대 병력 우위)일 때만 — 기지 격차는 확장으로 해소(econ-first 유지).
+    bool econ_open = my_b.size() >= open_bases || hq_threatened || rush || opp_ct > army_ct;
     if (room && sustainable && econ_open && budget >= TRAIN_COST + floor) {
       int n = (int)std::min<long long>(cap, (budget - floor) / TRAIN_COST);
       n = std::min(n, cap_army - army_ct);
