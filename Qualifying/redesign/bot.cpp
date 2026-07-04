@@ -924,21 +924,402 @@ static void emit_cmds(const GameMap &M, const Cmds &a) {
   std::cout << "END" << std::endl;
 }
 
-// ===================== Phase 1: minimal live main (clean-room) ===============
-// Decision layer intentionally absent -- this build exercises only the ported
-// foundation (simulator / resolver / world-model I-O) and emits a valid
-// do-nothing turn. SIM_TEST / OBS_TEST gates validate the engine byte-exact.
+// ===================== decision layer (clean-room, design-faithful) ==========
+// Implements redesign/남기고자_하는_기능.md. Organic pipeline:
+//   [토대] 경로예측(nxt역산+Rule169 교집합) -> 공격판별(목적지 role)+frontier
+//     -> [강제] 수비 need-bound(리졸버 grind-window, 생산우선 HQ, 못지킬 기지 포기)
+//     -> [강제] 끝내기(리졸버) + 타깃선정(가치/비용) + anti-trickle 발사 + 우회
+//     -> [자유] 잉여 상황배분(w_def/w_atk/w_grow) -> 확장/생산/업글   [HP-인지 노동]
+
+// Persistent cross-turn state. Rule 169 (이동잠금) makes an opp's target STABLE
+// once moving, so path-prediction candidate sets can be INTERSECTED to narrow.
+struct BotState {
+  std::map<int, int> prev_opp;       // opp suffix -> region last turn
+  std::map<int, std::set<int>> pred; // opp suffix -> candidate target regions
+};
+
+// HP-aware partition: fill each building's work_cap with the LOWEST-hp stationary
+// units (군 체력=재생불가 자원 -> 저HP는 노동, 고HP는 전투 보존). Rest = mobile.
+static std::vector<const Warrior *> partition_units(const SimState &S, const GameMap &M,
+                                                    std::set<int> &lab) {
+  Side me = M.my_side;
+  lab.clear();
+  for (const auto &b : S.buildings) {
+    if (b.side != me) continue;
+    std::vector<const Warrior *> on;
+    for (const auto &w : S.warriors)
+      if (w.id.side == me && w.hp > 0 && w.region == b.region && w.state == WState::STATIONARY)
+        on.push_back(&w);
+    std::sort(on.begin(), on.end(), [](const Warrior *x, const Warrior *y) { return x->hp < y->hp; });
+    for (int i = 0; i < b.work_cap() && i < (int)on.size(); ++i) lab.insert(on[i]->id.num);
+  }
+  std::vector<const Warrior *> mob;
+  for (const auto &w : S.warriors)
+    if (w.id.side == me && w.hp > 0 && w.state == WState::STATIONARY && !lab.count(w.id.num))
+      mob.push_back(&w);
+  return mob;
+}
+
+// Hop-count ETA along the referee shortest path (movement = 1 region/turn).
+static long long turns_to(const Paths &P, int N, int a, int dest) {
+  if (a == dest) return 0;
+  if (!reachable(P, a, dest)) return PINF;
+  int cur = a;
+  long long n = 0;
+  while (cur != dest && n <= N + 1) {
+    cur = P.nxt[cur][dest];
+    if (cur < 0) return PINF;
+    n++;
+  }
+  return n;
+}
+
+static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn, BotState &bs) {
+  Cmds a;
+  const Side me = M.my_side, opp = opposite(me);
+  const int my_hq = M.my_hq, opp_hq = M.opp_hq, N = M.N;
+  long long budget = S.gold[(int)me];
+  const Building *hq = building_at(S, my_hq);
+  const Building *ohq = building_at(S, opp_hq);
+  const int my_whp = HQ_LEVELS[hq ? hq->level : 1].warrior_hp;
+  const int train_cap = HQ_LEVELS[hq ? hq->level : 1].train_cap;
+
+  std::set<int> lab;
+  std::vector<const Warrior *> mobile = partition_units(S, M, lab);
+  std::vector<const Warrior *> laborers;
+  for (const auto &w : S.warriors)
+    if (w.id.side == me && w.hp > 0 && lab.count(w.id.num)) laborers.push_back(&w);
+  std::vector<const Building *> my_b, opp_b;
+  for (const auto &b : S.buildings) (b.side == me ? my_b : opp_b).push_back(&b);
+  std::set<int> used;
+
+  auto issue_move = [&](const Warrior *w, int dest) -> bool {
+    if (!w || used.count(w->id.num)) return false;
+    if (w->region == dest || !reachable(P, w->region, dest)) return false;
+    const Building *db = building_at(S, dest);
+    int cost = (db && db->side == me) ? 0 : MOVE_COST;
+    if (budget < cost) return false;
+    budget -= cost;
+    a.moves.push_back({w->id.num, dest});
+    used.insert(w->id.num);
+    return true;
+  };
+  auto avail = [&](const std::vector<const Warrior *> &pool) {
+    std::vector<const Warrior *> v;
+    for (auto w : pool) if (!used.count(w->id.num)) v.push_back(w);
+    return v;
+  };
+  auto garrison_at = [&](int r) {
+    int c = 0;
+    for (const auto &w : S.warriors)
+      if (w.id.side == me && w.hp > 0 && w.region == r) c++;
+    return c;
+  };
+  auto on_my_side = [&](int r) {
+    long long dm = reachable(P, my_hq, r) ? P.dist[my_hq][r] : PINF;
+    long long doo = reachable(P, opp_hq, r) ? P.dist[opp_hq][r] : PINF;
+    return dm < doo;
+  };
+  // Threat crossed on the direct path A->dest (intermediate regions only).
+  auto path_threat = [&](int A, int dest) {
+    if (!reachable(P, A, dest)) return 999;
+    int cur = A, sum = 0, g = 0;
+    while (cur != dest && g++ < N + 2) {
+      int nx = P.nxt[cur][dest];
+      if (nx < 0) break;
+      if (nx != dest) {
+        int t = 0;
+        for (const auto &w : S.warriors) if (w.id.side == opp && w.hp > 0 && w.region == nx) t++;
+        const Building *b = building_at(S, nx);
+        if (b && b->side == opp) t += b->turret();
+        sum += t;
+      }
+      cur = nx;
+    }
+    return sum;
+  };
+  // Safe offensive move: hold if the direct path crosses a lethal garrison and no
+  // safe own-building waypoint makes progress (우회 라우팅, 축약판).
+  auto issue_attack = [&](const Warrior *w, int dest) -> bool {
+    if (!w || used.count(w->id.num) || !reachable(P, w->region, dest)) return false;
+    if (path_threat(w->region, dest) <= 2) return issue_move(w, dest);
+    int bestW = -1;
+    long long bestD = P.dist[w->region][dest];
+    for (const Building *b : my_b) {
+      int W = b->region;
+      if (W == w->region || W == dest) continue;
+      if (!reachable(P, w->region, W) || !reachable(P, W, dest)) continue;
+      if (P.dist[W][dest] >= bestD) continue;
+      if (path_threat(w->region, W) > 2 || path_threat(W, dest) >= path_threat(w->region, dest)) continue;
+      bestW = W;
+    }
+    if (bestW >= 0) return issue_move(w, bestW);
+    if (path_threat(w->region, dest) >= 8) return false; // lethal, no route -> hold
+    return issue_move(w, dest);
+  };
+
+  // === [토대] 경로 예측: nxt 역산 + Rule169 교집합 narrowing =====================
+  std::vector<int> poi;
+  for (auto b : my_b) poi.push_back(b->region);
+  for (int sh : M.strongholds) poi.push_back(sh);
+  std::map<int, int> cur_opp;
+  for (const auto &w : S.warriors)
+    if (w.id.side == opp && w.hp > 0) cur_opp[w.id.num] = w.region;
+  std::map<int, std::set<int>> npred;
+  for (auto &kv : cur_opp) {
+    int sfx = kv.first, cur = kv.second;
+    auto pit = bs.prev_opp.find(sfx);
+    if (pit == bs.prev_opp.end()) continue; // new spawn: no motion yet
+    int prev = pit->second;
+    if (prev == cur) { // stood still (pinned/arrived): keep prior candidates
+      auto q = bs.pred.find(sfx);
+      if (q != bs.pred.end()) npred[sfx] = q->second;
+      continue;
+    }
+    std::set<int> cons; // targets whose shortest first step matches the observed move
+    for (int B : poi)
+      if (B != prev && reachable(P, prev, B) && P.nxt[prev][B] == cur) cons.insert(B);
+    auto q = bs.pred.find(sfx);
+    if (q == bs.pred.end() || q->second.empty()) npred[sfx] = cons;
+    else {
+      std::set<int> in;
+      for (int x : q->second) if (cons.count(x)) in.insert(x);
+      npred[sfx] = in.empty() ? cons : in; // empty intersection => target changed, reset
+    }
+  }
+  bs.pred = npred;
+  bs.prev_opp = cur_opp;
+
+  // === 공격 판별 + 위협 할당 (예측 목적지 role; frontier 통과 폴백) ==============
+  std::map<int, std::vector<int>> atk_hps; // my region -> incoming enemy hps
+  std::map<int, long long> wave_eta;
+  auto is_mine_bldg = [&](int r) { const Building *b = building_at(S, r); return b && b->side == me; };
+  for (const auto &w : S.warriors) {
+    if (w.id.side != opp || w.hp <= 0) continue;
+    int tgt = -1;
+    long long bd = PINF;
+    auto pit = bs.pred.find(w.id.num);
+    if (pit != bs.pred.end())
+      for (int B : pit->second)
+        if (is_mine_bldg(B) && reachable(P, w.region, B)) {
+          long long d = P.dist[w.region][B];
+          if (d < bd) { bd = d; tgt = B; }
+        }
+    if (tgt < 0 && on_my_side(w.region)) // crossed the frontier = attack intent
+      for (auto b : my_b) {
+        if (!reachable(P, w.region, b->region)) continue;
+        long long d = P.dist[w.region][b->region];
+        if (d < bd) { bd = d; tgt = b->region; }
+      }
+    if (tgt < 0) continue;
+    atk_hps[tgt].push_back(w.hp);
+    long long e = turns_to(P, N, w.region, tgt);
+    auto it = wave_eta.find(tgt);
+    if (it == wave_eta.end() || e < it->second) wave_eta[tgt] = e;
+  }
+
+  // === [강제] 수비: grind-window need-bound. HQ 생산우선, 못지킬 기지 포기 ========
+  auto draft_to = [&](int r, long long window, int need, int &have,
+                      std::vector<const Warrior *> &pool) {
+    while (have < need) {
+      const Warrior *pick = nullptr;
+      long long best = PINF;
+      for (auto w : avail(pool)) {
+        if (w->region == r) { pick = w; best = -1; break; }
+        if (!reachable(P, w->region, r)) continue;
+        long long t = turns_to(P, N, w->region, r);
+        if (t > window) continue;
+        if (t < best) { best = t; pick = w; }
+      }
+      if (!pick) break;
+      if (pick->region == r) { used.insert(pick->id.num); have++; }
+      else if (issue_move(pick, r)) have++;
+      else break;
+    }
+  };
+  bool hq_threatened = false;
+  int hq_need = 0, hq_have = 0;
+  std::vector<int> def_order;
+  if (atk_hps.count(my_hq)) def_order.push_back(my_hq);
+  for (auto &kv : atk_hps) if (kv.first != my_hq) def_order.push_back(kv.first);
+  for (int r : def_order) {
+    const Building *b = building_at(S, r);
+    if (!b) continue;
+    int turret = b->turret();
+    int need = min_defenders_to_hold(atk_hps[r], my_whp, turret, 64);
+    if (need > 64 && r != my_hq) continue; // 못지킬 기지: 헛소모 방지, 포기
+    int incoming = (int)atk_hps[r].size();
+    long long eta = wave_eta.count(r) ? wave_eta[r] : 0;
+    long long grind = std::max(1, b->hp) / std::max(1, incoming - turret);
+    long long window = eta + std::max(1LL, grind);
+    int have = garrison_at(r);
+    if (r == my_hq) {
+      // 생산 우선(window 0, 온사이트 즉턴), 부족분만 잉여->광부 징집
+      int shortfall = need - have;
+      if (hq && shortfall > 0 && budget >= TRAIN_COST) {
+        int n = (int)std::min<long long>({(long long)shortfall, (long long)train_cap, budget / TRAIN_COST});
+        if (n > 0) { a.train_n = n; budget -= (long long)TRAIN_COST * n; have += n; }
+      }
+      draft_to(r, window, need, have, mobile);
+      draft_to(r, window, need, have, laborers);
+      hq_threatened = true; hq_need = need; hq_have = have;
+    } else {
+      draft_to(r, window, need, have, mobile); // 기지: 훈련 불가 -> 징집만
+    }
+  }
+
+  // === [자유·경제] HQ 래더 (최우선): 경제 2배 + 생산 + turret/HP(수비·판정) 번들 ==
+  // 최우선 뱅킹 -> gold가 비용에 닿으면 즉시. L3까지 조기(train_cap 2 = 생산 2배).
+  if (hq && !hq_threatened && hq->level < HQ_MAX_LEVEL) {
+    int opp_lvl = (ohq && ohq->side == opp) ? ohq->level : 1;
+    bool want = hq->level < 3 || opp_lvl >= hq->level || turn >= 150;
+    int cost = HQ_LEVELS[hq->level + 1].upgrade_cost;
+    if (want && budget >= cost) { a.upgrades.push_back(my_hq); budget -= cost; }
+  }
+
+  // === [자유·경제] 확장: 이길 수 있는 빈 거점은 다 먹기 (정착민 레이스 가드) =====
+  // 경제가 승부처 -> 아군 유휴는 레이스 이기는 거점으로 계속 확장. 지는 레이스만 스킵.
+  for (int sh : M.strongholds) {
+    if (!reachable(P, my_hq, sh) || building_at(S, sh)) continue;
+    bool inbound = false;
+    long long my_eta = PINF;
+    for (const auto &w : S.warriors) {
+      if (w.id.side != me || w.hp <= 0) continue;
+      if (w.state == WState::MOVING && w.target == sh) { inbound = true; break; }
+      if (!used.count(w.id.num) && w.state == WState::STATIONARY && reachable(P, w.region, sh))
+        my_eta = std::min(my_eta, P.dist[w.region][sh]);
+    }
+    if (inbound) continue;
+    long long enemy_eta = reachable(P, opp_hq, sh) ? P.dist[opp_hq][sh] : PINF;
+    for (const auto &w : S.warriors)
+      if (w.id.side == opp && w.hp > 0 && reachable(P, w.region, sh))
+        enemy_eta = std::min(enemy_eta, P.dist[w.region][sh]);
+    const Warrior *here = nullptr, *near = nullptr;
+    long long best = PINF;
+    for (auto w : avail(mobile)) {
+      if (w->region == sh) { here = w; break; }
+      if (!reachable(P, w->region, sh)) continue;
+      long long d = P.dist[w->region][sh];
+      if (d < best) { best = d; near = w; }
+    }
+    if (here) {
+      used.insert(here->id.num);
+      if (!enemy_warrior_at(S, sh, me) && budget >= BASE_BUILD_COST) { a.upgrades.push_back(sh); budget -= BASE_BUILD_COST; }
+    } else if (near) {
+      if (my_eta > enemy_eta + 30) continue; // clearly lost race -> don't donate settler
+      issue_move(near, sh);
+    }
+  }
+
+  // 기지 레벨업: 채울 노동자 있을 때만 (work_cap 확장)
+  if (!hq_threatened)
+    for (const Building *b : my_b) {
+      if (b->type != BType::BASE || b->level >= BASE_MAX_LEVEL) continue;
+      if (garrison_at(b->region) < b->work_cap()) continue;
+      int cost = BASE_LEVELS[b->level + 1].cost;
+      if (budget >= cost + 300) { a.upgrades.push_back(b->region); budget -= cost; break; }
+    }
+  // 상비군 생산 (최우선): 상대보다 많게 유지. 병력 열세 = 압살이므로 골드를 병력으로.
+  // (HQ 래더는 위에서 gold 남을 때 먼저 먹으므로, 여기선 잔여를 병력으로 최대 전환.)
+  if (hq && a.train_n == 0) {
+    int army_ct = 0, opp_ct = 0, total_cap = 0;
+    for (const auto &w : S.warriors) (w.id.side == me ? army_ct : opp_ct)++;
+    for (auto b : my_b) total_cap += b->work_cap();
+    int cap_army = std::min(55, std::max(total_cap + 4, opp_ct + 4)); // 상대 +4 목표
+    long long idle = 100;
+    if (army_ct < cap_army && budget >= TRAIN_COST + idle) {
+      int n = (int)std::min<long long>({(long long)train_cap, (budget - idle) / TRAIN_COST, (long long)(cap_army - army_ct)});
+      if (n > 0) { a.train_n = n; budget -= (long long)TRAIN_COST * n; }
+    }
+  }
+
+  // === [강제] 끝내기 + 타깃선정(가치/비용) + anti-trickle (잉여 army) ===========
+  std::vector<const Warrior *> army = avail(mobile);
+  int attack_force = (int)army.size();
+  std::vector<int> ohq_def;
+  for (const auto &w : S.warriors)
+    if (w.id.side == opp && w.hp > 0 && w.region == opp_hq) ohq_def.push_back(w.hp);
+  int ohq_turret = (ohq && ohq->side == opp) ? ohq->turret() : 0;
+  int ohq_tc = (ohq && ohq->side == opp) ? HQ_LEVELS[ohq->level].train_cap : 0; // R11 retrain
+  int ohq_whp = HQ_LEVELS[(ohq && ohq->side == opp) ? ohq->level : 1].warrior_hp;
+  int ohq_sustain = ohq_tc >= 2 ? std::min<int>(12, (int)(10 * side_income(S, opp) / TRAIN_COST)) : 0;
+  int hq_clear = min_mass_to_take(my_whp, ohq_def, ohq_turret, 64, ohq_whp, ohq_tc, ohq_sustain);
+  int target = -1, need_mass = 0;
+  // HQ 커밋은 보수적으로: 행군 중 재훈련이 방어를 부풀리므로 큰 마진 + 상대 파산일 때만.
+  // (공격 자살 방지 — 잉여 army는 그 외엔 홈 대기 = 수비·판정 예비.)
+  bool opp_broke = side_income(S, opp) < 120;
+  int hq_commit = hq_clear + std::max(4, hq_clear / 2);
+  bool hq_finishable = ohq && ohq->side == opp && hq_clear <= 64 &&
+                       attack_force >= hq_commit && (opp_broke || attack_force >= hq_clear + 8);
+  if (hq_finishable) {
+    target = opp_hq; need_mass = hq_clear;
+  } else {
+    long long best_score = LLONG_MIN;
+    for (const Building *b : opp_b) {
+      if (b->type != BType::BASE || !reachable(P, my_hq, b->region)) continue;
+      std::vector<int> def;
+      for (const auto &w : S.warriors)
+        if (w.id.side == opp && w.hp > 0 && w.region == b->region) def.push_back(w.hp);
+      int need = min_mass_to_take(my_whp, def, b->turret(), 64); // 기지=재훈련 불가, 정확
+      if (need > 64) continue;
+      long long d = P.dist[my_hq][b->region];
+      long long score = 80LL * b->work_cap() - 3 * d - 20LL * (int)def.size() - 10LL * b->turret();
+      if (score > best_score) { best_score = score; target = b->region; need_mass = std::max(need, 2); }
+    }
+  }
+  if (target >= 0 && need_mass <= 64) {
+    int forward = 0;
+    for (const auto &w : S.warriors) {
+      if (w.id.side != me || w.hp <= 0) continue;
+      int loc = (w.state == WState::MOVING) ? w.target : w.region;
+      if (loc == target) { forward++; continue; }
+      for (int nb : M.adj[target]) if (loc == nb) { forward++; break; }
+    }
+    // army is co-located (spawns/idle at HQ) -> launching together avoids trickle.
+    // anti-trickle: launch only when forward + army can clear; else hold & accumulate.
+    if (forward + attack_force >= need_mass)
+      for (auto w : army) issue_attack(w, target);
+  }
+  return a;
+}
+
+// ===================== live main (clean-room) ================================
 int main() {
   GameMap M;
   SimState S;
   parse_init(M, S);
   Paths P = calculate_paths(M);
-  (void)P;
+  BotState bs;
   int turn;
   while (read_turn_start(turn)) {
-    Cmds a; // no decision yet
+    Cmds a = decide(S, M, P, turn, bs);
     emit_cmds(M, a);
     read_turn_result(S, M, a);
+#ifdef BOTDBG
+    {
+      std::ofstream fp("botdbg.txt", std::ios::app);
+      int ar = 0, op = 0, mb = 0, ob = 0, ml = 1, ol = 1;
+      for (const auto &w : S.warriors) (w.id.side == M.my_side ? ar : op)++;
+      for (const auto &b : S.buildings) (b.side == M.my_side ? mb : ob)++;
+      if (const Building *h = building_at(S, M.my_hq)) ml = h->level;
+      if (const Building *h = building_at(S, M.opp_hq)) ol = h->level;
+      int hqgar = 0, near_enemy = 0, hqhp = 0;
+      long long lane = reachable(P, M.my_hq, M.opp_hq) ? P.dist[M.my_hq][M.opp_hq] : 1;
+      for (const auto &w : S.warriors) {
+        if (w.hp <= 0) continue;
+        if (w.id.side == M.my_side && w.region == M.my_hq) hqgar++;
+        if (w.id.side != M.my_side && reachable(P, w.region, M.my_hq) &&
+            P.dist[w.region][M.my_hq] < lane / 2)
+          near_enemy++;
+      }
+      if (const Building *h = building_at(S, M.my_hq)) hqhp = h->hp;
+      fp << "T" << turn << " gold=" << S.gold[(int)M.my_side] << " army=" << ar
+         << " oarmy=" << op << " mb=" << mb << " ob=" << ob << " hq=" << ml
+         << " ohq=" << ol << " hqhp=" << hqhp << " hqgar=" << hqgar
+         << " nearHQ=" << near_enemy << " train=" << a.train_n
+         << " moves=" << a.moves.size() << " ups=" << a.upgrades.size() << "\n";
+    }
+#endif
   }
   return 0;
 }
