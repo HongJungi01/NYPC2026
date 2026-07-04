@@ -1025,6 +1025,10 @@ const Policy BALANCED{5, 200, 60, 40, 170, 6, false};
 const Policy TURTLE{8, 350, 60, 90, 150, 10, true};
 const Policy RUSH{3, 80, 0, 18, 175, 3, false};
 const Policy EXPAND{6, 250, 60, 60, 165, 12, true};
+const Policy BALANCED_MID{6, 140, 40, 35, 130, 10, true};
+const Policy TURTLE_MID{9, 260, 50, 75, 120, 14, true};
+const Policy RUSH_MID{4, 70, 0, 15, 150, 5, false};
+const Policy EXPAND_MID{7, 170, 40, 50, 125, 16, true};
 } // namespace presets
 
 static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn, BotState &bs,
@@ -1212,6 +1216,7 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
     if (!b) continue;
     int turret = b->turret();
     int need = min_defenders_to_hold(atk_hps[r], my_whp, turret, 64);
+    if (r == my_hq && need <= 62 && !(M.N >= 70 && M.N < 100)) need += 2;
     if (need > 64 && r != my_hq) continue; // 못지킬 기지: 헛소모 방지, 포기
     int incoming = (int)atk_hps[r].size();
     long long eta = wave_eta.count(r) ? wave_eta[r] : 0;
@@ -1297,7 +1302,7 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
   // 안전 우선) -> 페이싱 무변. tie(>=)에서도 예약해야 다음 레벨 선점 = 판정승.
   // MY-bot 조정: 병력에서 뒤질 땐 fund 미발동(레거시는 항상 발동 -> 내 봇에선 상대
   // 래더 추격에 잉여를 계속 뺏겨 병력 열세 심화 -> 42%. army 우위/대등일 때만 뱅크).
-  bool army_ok = army_ct + 2 >= opp_ct;
+  bool army_ok = army_ct + ((M.N >= 70 && M.N < 100) ? 2 : 4) >= opp_ct;
   long long hq_fund = 0;
   if (hq && hq->level < HQ_MAX_LEVEL && (!deep_behind || ladder_window) && !did_hq && army_ok &&
       (opp_hq_lvl >= hq->level || (income_dom && hq->level < 3) || turn >= pol.late_game))
@@ -1430,13 +1435,24 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
       n = std::min(n, cap_army - army_ct);
       if (n > 0) { a.train_n = n; budget -= (long long)TRAIN_COST * n; }
     }
-    // idle-gold: 안전+골드 잉여면 상한 넘어 병력 전환 (레거시 E; 후반 덜 쟁임)
-    if (a.train_n == 0 && !hq_threatened && incoming_hq == 0 && army_ct < ARMY_HARD_MAX && econ_open) {
-      long long idle = 200 + 400LL * std::max(0, MAX_TURN - turn) / MAX_TURN + hq_fund; // 잉여는 HQ 래더 우선
-      if (budget >= TRAIN_COST + idle) {
-        int n = (int)std::min<long long>(cap, (budget - idle) / TRAIN_COST);
-        n = std::min(n, ARMY_HARD_MAX - army_ct);
-        if (n > 0) { a.train_n = n; budget -= (long long)TRAIN_COST * n; }
+    // 잉여 골드 우선순위(사용자): 병력은 parity cap까지만(위 블록). 그 초과 잉여는 '놀 병력'이
+    // 아니라 HQ→거점 순 레벨업에 태운다 — work_cap(income 엔진)·200턴 HQ판정 급소. 앞서도 HQ를
+    // 계속 올려 코스팅으로 래더를 헌납하지 않는다(71247_5 income 동결·HQ L3 정체 교정). army_ok
+    // 일 때만 HQ 투자(병력 열세 시 과투자 방지 — 레거시 hq_fund 42% 회귀 교훈). 경제가 HQ까지
+    // 포화면 그때만 잉여를 병력 버퍼로. (거점 레벨업은 아래 루프가 남은 골드로 수행.)
+    if (a.train_n == 0 && !hq_threatened && incoming_hq == 0 && econ_open) {
+      int hq_next = (hq && hq->level < HQ_MAX_LEVEL) ? HQ_LEVELS[hq->level + 1].upgrade_cost : 0;
+      bool can_ladder = hq && hq->level < HQ_MAX_LEVEL && !did_hq && army_ok &&
+                        garrison_at(my_hq) >= 1 && !enemy_warrior_at(S, my_hq, me);
+      if (can_ladder && budget >= hq_next + pol.econ_reserve) {
+        a.upgrades.push_back(my_hq); budget -= hq_next; did_hq = true; // 잉여 → HQ 래더
+      } else if (hq && hq->level >= HQ_MAX_LEVEL && army_ct < ARMY_HARD_MAX) {
+        long long idle = 200 + 400LL * std::max(0, MAX_TURN - turn) / MAX_TURN; // HQ 포화 시 병력 버퍼
+        if (budget >= TRAIN_COST + idle) {
+          int n = (int)std::min<long long>({(long long)cap, (budget - idle) / TRAIN_COST,
+                                            (long long)(ARMY_HARD_MAX - army_ct)});
+          if (n > 0) { a.train_n = n; budget -= (long long)TRAIN_COST * n; }
+        }
       }
     }
   }
@@ -1492,9 +1508,9 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
   // HQ 커밋은 보수적으로: 행군 중 재훈련이 방어를 부풀리므로 큰 마진 + 상대 파산일 때만.
   // (공격 자살 방지 — 잉여 army는 그 외엔 홈 대기 = 수비·판정 예비.)
   bool opp_broke = side_income(S, opp) < 120;
-  int hq_commit = hq_clear + std::max(4, hq_clear / 2);
+  int hq_commit = hq_clear + ((M.N >= 70 && M.N < 100) ? std::max(4, hq_clear / 2) : ((M.N >= 100) ? std::max(4, hq_clear / 2) : std::max(3, hq_clear / 3)));
   bool hq_finishable = ohq && ohq->side == opp && hq_clear <= 64 &&
-                       attack_force >= hq_commit && (opp_broke || attack_force >= hq_clear + 8);
+                       attack_force >= hq_commit && (opp_broke || attack_force >= hq_clear + ((M.N >= 70 && M.N < 100) ? 8 : ((M.N >= 100) ? 8 : 6)));
   if (hq_finishable) {
     target = opp_hq; need_mass = hq_clear;
   } else {
@@ -1587,63 +1603,108 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
     }
     bs.atk_target = target;
   }
-  // === 잉여군 처리: 상대 태세로 분기 — 공세면 전방 대기, 소진이면 경제 재전환 ==========
-  // 수비 draft가 이번 턴 필요 수비수는 이미 확보. 단 위협 건물에 '이미 서 있는' 유닛은 draft가
-  // pin 안 하므로, 먼저 need(+1 마진)만큼 고정해 수비를 지킨 뒤 초과분만 잉여로 다룬다.
-  // - 상대 공세(수적 우위·집결) & 거점 우위: 고HP 잉여를 전방 거점에 대기 → 요격(draft window
-  //   충족)·거점치기(말려죽이기) 가동. HQ-온리 대기면 요격이 헛돈다(사용자 진단).
-  // - 상대 소진(우리가 우세): 유휴 잉여를 work_cap 빈 기지로 즉시 재전환 → 수입 회복. 방어 전투로
-  //   노동자가 빠져 수입이 급락한 걸 신속 복구(사용자 71247_3 T73~81: 8마리 방어 후 찔끔 복귀·
-  //   수입 정체). HQ 위협·웨이브 중엔 홈 수비 우선이라 미발동. 저HP는 hit&return 회수.
-  if (!hq_threatened && !wave_in_flight) {
-    for (auto &kv : atk_hps) { // 위협 건물의 필요 수비수 pin (재전환/전방집결에서 제외)
+  // === 잉여군 배치 ①단계 — 거점 만석(사용자: 먼저 거점에 주둔). 위협 건물 필요 수비수는 pin.
+  // 만석은 income 엔진이자 기지 렙업 조건. 웨이브 중에도 계속(경제는 안 멈춘다 — !hq_threatened만).
+  if (!hq_threatened) {
+    for (auto &kv : atk_hps) { // 위협 건물 필요 수비수 pin (배치/발사에서 제외)
       const Building *b = building_at(S, kv.first);
       if (!b || kv.first == my_hq) continue;
-      int need = min_defenders_to_hold(kv.second, my_whp, b->turret(), 64) + 1; // 안전마진 +1
+      int need = min_defenders_to_hold(kv.second, my_whp, b->turret(), 64) + 1;
       int pin = 0;
       for (auto w : avail(mobile)) {
         if (pin >= need) break;
         if (w->region == kv.first) { used.insert(w->id.num); pin++; }
       }
     }
-    bool opp_offensive = opp_bracing || opp_ct >= army_ct; // 상대 공세 태세?
-    if (opp_offensive && (int)my_b.size() > (int)opp_b.size()) {
-      // (a) 전방 잉여 대기: 고HP 잉여를 가장 전방인 안전 거점(우리편/중앙)에 집결
-      int stage = -1;
-      long long best_fwd = PINF;
-      for (const Building *b : my_b) {
-        long long doo = reachable(P, b->region, opp_hq) ? P.dist[b->region][opp_hq] : PINF;
-        long long dmh = reachable(P, my_hq, b->region) ? P.dist[my_hq][b->region] : PINF;
-        if (doo >= PINF || dmh > doo || atk_hps.count(b->region)) continue;
-        if (doo < best_fwd) { best_fwd = doo; stage = b->region; }
+    for (const Building *b : my_b) { // work_cap 빈 기지를 최근접 유휴로 채움
+      int slots = b->work_cap() - garrison_at(b->region);
+      for (int k = 0; k < slots; ++k) {
+        const Warrior *w = nullptr;
+        long long best = PINF;
+        for (auto m2 : avail(mobile)) {
+          if (m2->region == b->region || !reachable(P, m2->region, b->region)) continue;
+          long long d = P.dist[m2->region][b->region];
+          if (d < best) { best = d; w = m2; }
+        }
+        if (!w) break;
+        issue_move(w, b->region);
       }
-      if (stage >= 0 && stage != my_hq) {
-        int reserve = std::max(2, 1 + hq_turret); // 홈 수비 예비
-        int kept = 0;
-        for (auto w : avail(mobile)) {
-          if (w->hp * 2 <= my_whp) continue;
-          long long dcur = reachable(P, w->region, opp_hq) ? P.dist[w->region][opp_hq] : PINF;
-          if (dcur <= best_fwd) continue;
-          if (kept < reserve) { kept++; continue; }
-          issue_move(w, stage);
+    }
+  }
+  // === 전방 stage 산정 — 잉여를 모을 '한 거점'(가장 전방인 안전 아군 건물). 위협받는 건물 제외.
+  int stage = -1;
+  {
+    long long best_fwd = PINF;
+    for (const Building *b : my_b) {
+      long long doo = reachable(P, b->region, opp_hq) ? P.dist[b->region][opp_hq] : PINF;
+      long long dmh = reachable(P, my_hq, b->region) ? P.dist[my_hq][b->region] : PINF;
+      if (doo >= PINF || dmh > doo || atk_hps.count(b->region)) continue;
+      if (doo < best_fwd) { best_fwd = doo; stage = b->region; }
+    }
+  }
+  // === 로밍 harass 웨이브(사용자, 순이득 확인): 잉여를 '한 거점'에 모아 리졸버 need(가까운 약체 2개
+  // 클리어 질량 합)만큼 쌓이면 그 거점에서 '한 번에' 발사(같은 지점 출발 → 동시 도착; 짤짤이·따로
+  // 도달 근절). 발사점은 가장 전방 아군 건물부터 검사 → 방금 점령한 전방 거점의 생존 뭉치도 발사점이
+  // 돼 두 번째 약체로 롤(동선 최적화·두 거점 연속 타격). 저HP 생존병은 hit&return이 후방/점령거점
+  // 노동자로 차출. ourside 만석 전엔 미발동. 표적=발사점 최근접 약체.
+  if (!hq_threatened && !wave_in_flight && bs.atk_target < 0) {
+    bool ourside_full = true;
+    for (const Building *b : my_b)
+      if (on_my_side(b->region) && garrison_at(b->region) < b->work_cap()) { ourside_full = false; break; }
+    if (ourside_full) {
+      std::vector<const Building *> lps(my_b.begin(), my_b.end());
+      std::sort(lps.begin(), lps.end(), [&](const Building *x, const Building *y) {
+        long long dx = reachable(P, x->region, opp_hq) ? P.dist[x->region][opp_hq] : PINF;
+        long long dy = reachable(P, y->region, opp_hq) ? P.dist[y->region][opp_hq] : PINF;
+        return dx < dy; // 가장 전방(opp_hq 근접) 발사점 먼저 → 롤 우선
+      });
+      auto clear_mass = [&](const Building *b) {
+        std::vector<int> def;
+        for (const auto &w : S.warriors)
+          if (w.id.side == opp && w.hp > 0 && w.region == b->region) def.push_back(w.hp);
+        return min_mass_to_take(my_whp, def, b->turret(), 64);
+      };
+      for (const Building *L : lps) {
+        int lp = L->region;
+        std::vector<const Warrior *> staged; // 이 거점에 모인 고HP 뭉치(동시 출발분)
+        for (auto w : avail(mobile))
+          if (w->region == lp && w->hp * 2 > my_whp) staged.push_back(w);
+        if (staged.empty()) continue;
+        std::vector<std::pair<long long, const Building *>> weak; // 발사점 기준 약체 거점
+        for (const Building *b : opp_b) {
+          if (b->type != BType::BASE || !reachable(P, lp, b->region)) continue;
+          int gar = 0;
+          for (const auto &w : S.warriors)
+            if (w.id.side == opp && w.hp > 0 && w.region == b->region) gar++;
+          if (gar > 6) continue; // 약체만
+          weak.push_back({P.dist[lp][b->region], b});
+        }
+        if (weak.empty()) continue;
+        std::sort(weak.begin(), weak.end(), [](auto &x, auto &y) { return x.first < y.first; });
+        int need = clear_mass(weak[0].second);
+        if (weak.size() >= 2) need += clear_mass(weak[1].second); // 가까운 약체 2개 합
+        need = std::max(2, need + 1);
+        if ((int)staged.size() >= need) { // 발사점에 need만큼 모임 → 한 번에
+          for (int i = 0; i < need && i < (int)staged.size(); ++i)
+            issue_attack(staged[i], weak[0].second->region);
+          bs.atk_target = weak[0].second->region; // 커밋
+          break;                                   // 한 발사점(한 웨이브)만
         }
       }
-    } else if (!opp_offensive) {
-      // (b) 경제 재전환: 유휴 잉여를 work_cap 빈 아군 기지로 → 도착 즉시 노동 복귀(수입 회복)
-      for (const Building *b : my_b) {
-        int slots = b->work_cap() - garrison_at(b->region);
-        for (int k = 0; k < slots; ++k) {
-          const Warrior *w = nullptr;
-          long long best = PINF;
-          for (auto m2 : avail(mobile)) {
-            if (m2->region == b->region || !reachable(P, m2->region, b->region)) continue;
-            long long d = P.dist[m2->region][b->region];
-            if (d < best) { best = d; w = m2; }
-          }
-          if (!w) break;
-          issue_move(w, b->region);
-        }
-      }
+    }
+  }
+  // === 잉여 집결(gather) — 고HP 잉여를 stage로 모은다. 웨이브 중에도 계속(HQ 적치 방지 — 적 거점이
+  // 멀어 HQ에 쌓을 이유 없음, 사용자). 홈 예비는 최소만. 이 집결분이 위 harass의 발사 뭉치가 된다.
+  if (!hq_threatened && stage >= 0 && stage != my_hq && (int)my_b.size() > (int)opp_b.size()) {
+    long long stage_doo = reachable(P, stage, opp_hq) ? P.dist[stage][opp_hq] : PINF;
+    int reserve = std::max(1, hq_turret); // HQ 최소 예비(반응 수비는 draft가 담당)
+    int kept = 0;
+    for (auto w : avail(mobile)) {
+      if (w->hp * 2 <= my_whp) continue;                                    // 저HP=hit&return 회수
+      long long dcur = reachable(P, w->region, opp_hq) ? P.dist[w->region][opp_hq] : PINF;
+      if (dcur <= stage_doo) continue;                                      // 이미 stage거나 더 전방
+      if (kept < reserve) { kept++; continue; }                            // 홈 최소 예비
+      issue_move(w, stage);
     }
   }
   // 안전망: 중복 UPGRADE 제거 (referee가 같은 구역 중복 명령을 WA 처리)
@@ -1663,9 +1724,15 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
 static Cmds strategy_manager(const SimState &S0, const GameMap &M, const Paths &P, int turn,
                              BotState &bs) {
   const Side me = M.my_side, opp = opposite(me);
-  const int K = std::max(1, std::min(MAX_TURN - turn, 8)); // credible horizon
-  const Policy cands[] = {presets::BALANCED, presets::TURTLE, presets::RUSH, presets::EXPAND};
-  const Policy oppol = presets::BALANCED;
+  const int K = std::max(1, std::min(MAX_TURN - turn, (M.N >= 70 && M.N < 100) ? 8 : 10)); // credible horizon
+  const bool mid_map = M.N >= 70 && M.N < 100;
+  const Policy cands[] = {
+      mid_map ? presets::BALANCED_MID : presets::BALANCED,
+      mid_map ? presets::TURTLE_MID : presets::TURTLE,
+      mid_map ? presets::RUSH_MID : presets::RUSH,
+      mid_map ? presets::EXPAND_MID : presets::EXPAND
+  };
+  const Policy oppol = mid_map ? presets::BALANCED_MID : presets::BALANCED;
   GameMap oppM = M;
   oppM.my_side = opp;
   oppM.my_hq = hq_region_of(M, opp);
