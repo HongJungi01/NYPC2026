@@ -1457,7 +1457,13 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
                                   hq_in_win ? ohq_tc : 0, win_sustain);
       if (need > 64) continue;
       long long d = P.dist[my_hq][b->region];
-      long long score = 80LL * b->work_cap() - 3 * d - 20LL * (int)def.size() - 10LL * b->turret();
+      // JIT 안전마진(사용자 요청 70074_8): 상대 증원(opp_hq->t)이 내 도착보다 늦을수록
+      // 안전히 치고 복귀·다음 공격 셋업 가능 -> 그런 표적을 선호. (전방 이동은 HQ
+      // 노출로 실측 붕괴 -> 이동 없이 "선택"만 안전쪽으로.)
+      long long opp_reinf = reachable(P, opp_hq, b->region) ? P.dist[opp_hq][b->region] : (d + 30);
+      long long safety = std::max<long long>(-6, std::min<long long>(opp_reinf - my_eta, 12));
+      long long score = 80LL * b->work_cap() - 3 * d - 20LL * (int)def.size() - 10LL * b->turret() +
+                        6LL * safety;
       if (score > best_score) { best_score = score; target = b->region; need_mass = std::max(need, 2); }
     }
   }
