@@ -1251,14 +1251,35 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
     budget -= BASE_BUILD_COST;
     used.insert(w->id.num);
   }
-  // HQ 래더 (레거시 C4/C5): L1 / late_game 판정창 / deep_hq 중반 / 적 레벨 추격
-  if (hq && !hq_threatened && garrison_at(my_hq) >= 1 && hq->level < HQ_MAX_LEVEL) {
-    int opp_lvl = (ohq && ohq->side == opp) ? ohq->level : 0;
-    bool want = hq->level == 1 || turn >= pol.late_game || (pol.deep_hq && hq->level < 4) ||
-                (opp_lvl >= hq->level);
+  // === HQ 래더 + hp-타이브레이크 fund (레거시 07031347d C4/C5·J3·R4·R12 이식) =====
+  int opp_hq_lvl = (ohq && ohq->side == opp) ? ohq->level : 0;
+  // C4: 경제 우위(수입 20:13 & 골드리드>600)면 L3까지 선제 업글(타이브레이크 보험).
+  bool income_dom = (long long)side_income(S, me) * 13 >= (long long)side_income(S, opp) * 20 &&
+                    (S.gold[(int)me] - S.gold[(int)opp]) > 600;
+  // J3: 기지·병력 둘 다 뒤지면 업글=수비 붕괴 -> 스킵(병력 우선). 단 late 창은 예외(R4).
+  bool deep_behind = (int)opp_b.size() > (int)my_b.size() && opp_ct > army_ct;
+  bool ladder_window = turn >= pol.late_game;
+  bool did_hq = false;
+  if (hq && !hq_threatened && garrison_at(my_hq) >= 1 && !enemy_warrior_at(S, my_hq, me) &&
+      hq->level < HQ_MAX_LEVEL) {
+    // HQ 레벨을 상대 이상으로: train_cap(생산)·work_cap(경제)·turret+maxHP(수비·판정).
+    bool want = (hq->level == 1 || turn >= pol.late_game || (pol.deep_hq && hq->level < 4) ||
+                 (opp_hq_lvl >= hq->level) || (income_dom && hq->level < 3)) &&
+                (!deep_behind || ladder_window);
     int cost = HQ_LEVELS[hq->level + 1].upgrade_cost;
-    if (want && budget >= cost + pol.econ_reserve) { a.upgrades.push_back(my_hq); budget -= cost; }
+    if (want && budget >= cost + pol.econ_reserve) { a.upgrades.push_back(my_hq); budget -= cost; did_hq = true; }
   }
+  // R12: 잉여 트레이너가 매턴 골드를 idle까지 태워 업글 문턱에 영영 못 닿음. 업글이
+  // 타이브레이크 NEED(opp HQ >= 내 HQ, income_dom, 또는 late 창)면 그 SURPLUS 트레이너
+  // + 기지 렙업에서만 업글 비용을 예약(hq_fund). parity/비상/정규 훈련은 불가침(병력
+  // 안전 우선) -> 페이싱 무변. tie(>=)에서도 예약해야 다음 레벨 선점 = 판정승.
+  // MY-bot 조정: 병력에서 뒤질 땐 fund 미발동(레거시는 항상 발동 -> 내 봇에선 상대
+  // 래더 추격에 잉여를 계속 뺏겨 병력 열세 심화 -> 42%. army 우위/대등일 때만 뱅크).
+  bool army_ok = army_ct + 2 >= opp_ct;
+  long long hq_fund = 0;
+  if (hq && hq->level < HQ_MAX_LEVEL && (!deep_behind || ladder_window) && !did_hq && army_ok &&
+      (opp_hq_lvl >= hq->level || (income_dom && hq->level < 3) || turn >= pol.late_game))
+    hq_fund = HQ_LEVELS[hq->level + 1].upgrade_cost;
   // 확장: 동시에 한 정착민만 (inflight). 지는 레이스는 스킵(SETTLER_RACE_MARGIN=2).
   int inflight = 0;
   for (const auto &w : S.warriors) {
@@ -1323,7 +1344,7 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
     int income_after = WORK_INCOME * std::min(total_cap, army_ct + 1);
     bool sustainable = income_after - UPKEEP_PER_WARRIOR * (army_ct + 1) >= 0;
     bool room = army_ct < cap_army;
-    long long floor = pol.train_reserve + (inflight > 0 ? BASE_BUILD_COST : 0);
+    long long floor = pol.train_reserve + (inflight > 0 ? BASE_BUILD_COST : 0); // parity 불가침
     size_t open_bases = rush ? 2 : 3; // 경제-우선 오프닝: HQ+3 전엔 상비군 없음
     if (M.N >= 90) open_bases += 1;
     else if (M.N <= 63) open_bases = std::min(open_bases, (size_t)2);
@@ -1335,7 +1356,7 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
     }
     // idle-gold: 안전+골드 잉여면 상한 넘어 병력 전환 (레거시 E; 후반 덜 쟁임)
     if (a.train_n == 0 && !hq_threatened && incoming_hq == 0 && army_ct < ARMY_HARD_MAX && econ_open) {
-      long long idle = 200 + 400LL * std::max(0, MAX_TURN - turn) / MAX_TURN;
+      long long idle = 200 + 400LL * std::max(0, MAX_TURN - turn) / MAX_TURN + hq_fund; // 잉여는 HQ 래더 우선
       if (budget >= TRAIN_COST + idle) {
         int n = (int)std::min<long long>(cap, (budget - idle) / TRAIN_COST);
         n = std::min(n, ARMY_HARD_MAX - army_ct);
@@ -1349,7 +1370,8 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
       if (b->type != BType::BASE || b->level >= BASE_MAX_LEVEL) continue;
       if (garrison_at(b->region) < b->work_cap()) continue;
       int cost = BASE_LEVELS[b->level + 1].cost;
-      if (budget >= cost + pol.econ_reserve + 200) { a.upgrades.push_back(b->region); budget -= cost; break; }
+      // C5: 기지 렙업이 HQ fund를 새게 하지 말 것(레거시 t168 base-L3 drain 회귀).
+      if (budget >= cost + pol.econ_reserve + 200 + hq_fund) { a.upgrades.push_back(b->region); budget -= cost; break; }
     }
 
   // === [강제] 끝내기 + 타깃선정(가치/비용) + anti-trickle (잉여 army) ===========
