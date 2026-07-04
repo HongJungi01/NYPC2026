@@ -937,6 +937,8 @@ struct BotState {
   std::map<int, int> prev_opp;       // opp suffix -> region last turn
   std::map<int, std::set<int>> pred; // opp suffix -> candidate target regions
   int atk_target = -1;               // committed attack target (wave commitment, anti-trickle)
+  int atk_deadline = -1;             // 웨이브 동시도착 목표 턴 (도착 스케줄러)
+  int dbg_thr = 0, dbg_att = 0, dbg_inhq = 0, dbg_rush = 0; // BOTDBG 계측 (live 호출이 마지막)
 };
 
 // HP-aware partition: fill each building's work_cap with the LOWEST-hp stationary
@@ -1116,9 +1118,11 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
     auto pit = bs.prev_opp.find(sfx);
     if (pit == bs.prev_opp.end()) continue; // new spawn: no motion yet
     int prev = pit->second;
-    if (prev == cur) { // stood still (pinned/arrived): keep prior candidates
-      auto q = bs.pred.find(sfx);
-      if (q != bs.pred.end()) npred[sfx] = q->second;
+    if (prev == cur) { // 정지 = 이동 완료(referee: 이동 중 재명령 불가) = 의도 해소.
+      // 여정 중 후보를 동결하면 자기 요새에 앉은 노동자가 영구 유령 위협이 됨
+      // (초반 한 마리 확장을 공격으로 오인 -> 수비 낭비). 후보 = {현 위치}로 붕괴:
+      // 내 건물 위면 실제 공성으로 계속 위협, 아니면 무위협. 재이동 시 새 후보 생성.
+      npred[sfx] = {cur};
       continue;
     }
     std::set<int> cons; // targets whose shortest first step matches the observed move
@@ -1150,7 +1154,9 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
           long long d = P.dist[w.region][B];
           if (d < bd) { bd = d; tgt = B; }
         }
-    if (tgt < 0 && on_my_side(w.region)) // crossed the frontier = attack intent
+    // frontier 폴백: "이동 중"인 유닛만 침입 의도로 간주. 정지 유닛은 의도 해소
+    // (내 쪽에 앉은 상대 기지 노동자를 영구 공격자로 오인하는 유령 차단).
+    if (tgt < 0 && w.state == WState::MOVING && on_my_side(w.region))
       for (auto b : my_b) {
         if (!reachable(P, w.region, b->region)) continue;
         long long d = P.dist[w.region][b->region];
@@ -1223,6 +1229,9 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
   int incoming_hq = atk_hps.count(my_hq) ? (int)atk_hps[my_hq].size() : 0;
   bool rush = incoming_hq >= std::max(3, garrison_at(my_hq) + hq_turret);
   bool behind = opp_ct > army_ct || (int)opp_b.size() > (int)my_b.size();
+  bs.dbg_thr = (int)atk_hps.size(); bs.dbg_att = 0;
+  for (auto &kv : atk_hps) bs.dbg_att += (int)kv.second.size();
+  bs.dbg_inhq = incoming_hq; bs.dbg_rush = rush ? 1 : 0;
 
   // EconomyManager: 정착민이 서 있는 빈 요새에 기지 건설 (거점당 1개만 — 중복 UPGRADE=WA)
   std::set<int> built_here;
@@ -1266,9 +1275,22 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
         if (d < best) { best = d; w = m2; }
       }
       if (!w) continue;
+      // 레이스 판정: "실제로 sh를 노리는" 상대만 레이서 (유령 위협과 동형 오류 방지 —
+      // 모든 유휴 상대를 레이서로 보면 중앙 요새 전부 헌납, 확장 3기지 고착).
+      // 레이서 = (a) sh 위/인접에 선 유닛, (b) MOVING이고 예측 후보에 sh 포함.
       long long enemy_eta = PINF;
       for (const auto &w2 : S.warriors) {
         if (w2.id.side == me || w2.hp <= 0) continue;
+        bool racer = false;
+        if (w2.state == WState::MOVING) {
+          auto pit2 = bs.pred.find(w2.id.num);
+          racer = (pit2 == bs.pred.end()) || pit2->second.empty() || pit2->second.count(sh);
+        } else {
+          racer = (w2.region == sh);
+          if (!racer)
+            for (int nb : M.adj[sh]) if (w2.region == nb) { racer = true; break; }
+        }
+        if (!racer) continue;
         int loc2 = (w2.state == WState::MOVING) ? w2.target : w2.region;
         if (reachable(P, loc2, sh)) enemy_eta = std::min(enemy_eta, P.dist[loc2][sh]);
       }
@@ -1376,13 +1398,12 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
     if (tgt_live && committed > 0) wave_in_flight = true;
     else bs.atk_target = -1; // resolved -> free to re-commit
   }
-  if (target >= 0 && need_mass <= 64 && !wave_in_flight) {
-    // gather at home; launch only when the co-located stationary mass alone can
-    // clear -> all depart together -> arrive together (no trickle, no top-ups).
-    if (attack_force >= need_mass) {
-      for (auto w : army) issue_attack(w, target);
-      bs.atk_target = target;
-    }
+  // 전원 즉시 발사(주력이 HQ 스폰 공유로 대체로 동위치). eta-스케줄 출발(분산 대기
+  // 후 동시수렴)은 실측 악화(4-5-1 -> 3-7-0): 대기 유닛이 수비에 재차출돼 웨이브가
+  // 새고, 출발창을 놓친 유닛이 영구 이탈 -> 미달 전력 도착. 즉시 발사가 강건.
+  if (target >= 0 && need_mass <= 64 && !wave_in_flight && attack_force >= need_mass) {
+    for (auto w : army) issue_attack(w, target);
+    bs.atk_target = target;
   }
   // 안전망: 중복 UPGRADE 제거 (referee가 같은 구역 중복 명령을 WA 처리)
   {
@@ -1461,7 +1482,9 @@ int main() {
          << " oarmy=" << op << " mb=" << mb << " ob=" << ob << " hq=" << ml
          << " ohq=" << ol << " hqhp=" << hqhp << " hqgar=" << hqgar
          << " nearHQ=" << near_enemy << " train=" << a.train_n
-         << " moves=" << a.moves.size() << " ups=" << a.upgrades.size() << "\n";
+         << " moves=" << a.moves.size() << " ups=" << a.upgrades.size()
+         << " thr=" << bs.dbg_thr << " att=" << bs.dbg_att
+         << " inHQ=" << bs.dbg_inhq << " rush=" << bs.dbg_rush << "\n";
     }
 #endif
   }
