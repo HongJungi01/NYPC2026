@@ -1369,10 +1369,21 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
     long long best_score = LLONG_MIN;
     for (const Building *b : opp_b) {
       if (b->type != BType::BASE || !reachable(P, my_hq, b->region)) continue;
+      // 수비 = 현 주둔 + "내 도착+2턴 내 닿는" 적 증원. "기지=정적 수비" 가정은
+      // 작은 맵에서 붕괴(상대 HQ 3홉이면 need 3 웨이브가 실제 3+4를 만나 전멸
+      // 반복 = N<=63 전패의 근인). 창 내 상대 HQ면 재훈련 스트림도 리졸버 반영.
+      long long my_eta = P.dist[my_hq][b->region]; // 주력=HQ권 근사
       std::vector<int> def;
-      for (const auto &w : S.warriors)
-        if (w.id.side == opp && w.hp > 0 && w.region == b->region) def.push_back(w.hp);
-      int need = min_mass_to_take(my_whp, def, b->turret(), 64); // 기지=재훈련 불가, 정확
+      for (const auto &w : S.warriors) {
+        if (w.id.side != opp || w.hp <= 0) continue;
+        if (w.region == b->region ||
+            (reachable(P, w.region, b->region) && P.dist[w.region][b->region] <= my_eta + 2))
+          def.push_back(w.hp);
+      }
+      bool hq_in_win = reachable(P, opp_hq, b->region) && P.dist[opp_hq][b->region] <= my_eta + 2;
+      int win_sustain = hq_in_win ? std::min(4, (int)(4 * side_income(S, opp) / TRAIN_COST)) : 0;
+      int need = min_mass_to_take(my_whp, def, b->turret(), 64, ohq_whp,
+                                  hq_in_win ? ohq_tc : 0, win_sustain);
       if (need > 64) continue;
       long long d = P.dist[my_hq][b->region];
       long long score = 80LL * b->work_cap() - 3 * d - 20LL * (int)def.size() - 10LL * b->turret();
