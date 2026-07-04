@@ -1302,24 +1302,86 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
   if (hq && hq->level < HQ_MAX_LEVEL && (!deep_behind || ladder_window) && !did_hq && army_ok &&
       (opp_hq_lvl >= hq->level || (income_dom && hq->level < 3) || turn >= pol.late_game))
     hq_fund = HQ_LEVELS[hq->level + 1].upgrade_cost;
-  // 확장: 동시에 한 정착민만 (inflight). 지는 레이스는 스킵(SETTLER_RACE_MARGIN=2).
+  // 확정 경합 레이서 ETA: sh를 실제로 노리는 상대만(유령 배제). strict=true = "확정"만
+  // (sh 위/인접 정지 유닛, 또는 narrowed 예측이 sh를 콕 집은 MOVING 유닛). strict=false는
+  // 기존 dispatch 판정과 동일(예측 없는 MOVING도 레이서로 봄).
+  auto enemy_race_eta = [&](int sh, bool strict) -> long long {
+    long long eta = PINF;
+    for (const auto &w2 : S.warriors) {
+      if (w2.id.side == me || w2.hp <= 0) continue;
+      bool racer = false;
+      if (w2.state == WState::MOVING) {
+        auto pit2 = bs.pred.find(w2.id.num);
+        bool wild = (pit2 == bs.pred.end()) || pit2->second.empty();
+        bool specific = !wild && pit2->second.count(sh);
+        racer = specific || (wild && !strict);
+      } else {
+        racer = (w2.region == sh);
+        if (!racer)
+          for (int nb : M.adj[sh]) if (w2.region == nb) { racer = true; break; }
+      }
+      if (!racer) continue;
+      int loc2 = (w2.state == WState::MOVING) ? w2.target : w2.region;
+      if (reachable(P, loc2, sh)) eta = std::min(eta, P.dist[loc2][sh]);
+    }
+    return eta;
+  };
+  // 확장: 동시에 한 정착민만 (inflight). 단, 목표가 "확정 경합"(중앙/전방 요새 & 확정 레이서
+  // ETA ≤ 내 ETA → 동시·열세 도착 = 못 먹음)인 정착민은 released: inflight에서 빼 최근접
+  // 안전 요새로 새 정착민을 낼 수 있게 한다. released 유닛은 재선발/재명령 안 함(이동중 재명령
+  // =즉시패; 도착했으면 전방 army로 방치·야전 편입). 사용자 전략: 중앙 경합이 확정되면 중앙조
+  // 포기, 가장 가까운 셀을 골드-타이밍 맞춰 새로 뽑아 확보(70074_3: ~T19 관측→14번 재파병).
   int inflight = 0;
+  std::set<int> released;
   for (const auto &w : S.warriors) {
     if (w.id.side != me || w.hp <= 0) continue;
     int loc = (w.state == WState::MOVING) ? w.target : w.region;
-    if (is_sh(loc) && !building_at(S, loc)) inflight++;
+    if (!is_sh(loc) || building_at(S, loc)) continue;
+    long long our_eta = (w.state == WState::MOVING && reachable(P, w.region, loc))
+                            ? P.dist[w.region][loc] : 0;
+    // 중앙/전방(우리가 더 가깝지 않은) 요새에서만 포기 판정 — 우리편 근접 요새 헛포기·스래싱 방지.
+    bool central = reachable(P, opp_hq, loc) && P.dist[my_hq][loc] >= P.dist[opp_hq][loc];
+    long long e_eta = central ? enemy_race_eta(loc, /*strict=*/true) : PINF;
+    if (e_eta < PINF && e_eta <= our_eta) { released.insert(w.id.num); continue; }
+    inflight++;
   }
+  bool pivoting = !released.empty();
   bool rusher_hold = rush && (int)my_b.size() >= 2; // 러쉬 중엔 HQ+2에서 확장 멈춤
   if (inflight == 0 && !rusher_hold) {
     const long long RACE = 2;
     std::vector<int> order;
     for (int sh : M.strongholds) if (reachable(P, my_hq, sh)) order.push_back(sh);
-    std::sort(order.begin(), order.end(), [&](int x, int y) { return P.dist[my_hq][x] < P.dist[my_hq][y]; });
+    // 목표 선택: 3기지째부터 다음 기지는 골드-바운드 — 300골드가 gold_eta 턴 뒤에야
+    // 모이므로 그 창(horizon) 안에 도달하는 요새는 "건설 턴이 동일"(거리 사실상 무료).
+    // 창 안에서는 최근접 대신 가장 전방(중앙) 요새를 우선한다: 중앙거점 가치가 크고,
+    // 먼 목적지가 어차피 낭비될 유휴 업킵을 걸음으로 흡수한다. 창 밖 or HQ+2 이전(2기지
+    // 이하)은 기존대로 최근접(오프닝 econ 템포 보존). 근거: 70074_3 T13-19 — 근접 node14는
+    // T15 도착·T19 건설로 3턴 유휴, 중앙 node31은 같은 T19 건설에 유휴 0(사용자 검증).
+    long long net_inc = std::max(1LL, (long long)side_income(S, me) -
+                                          (long long)UPKEEP_PER_WARRIOR * army_ct);
+    long long gold_eta =
+        std::max(0LL, ((long long)BASE_BUILD_COST - budget + net_inc - 1) / net_inc);
+    // 건설 가능 턴 = now+gold_eta, 정착민 도착(대기 가능) = now+dm → 지연 없이 지으려면
+    // dm<=gold_eta(엄격). 중앙이 제때 못 닿으면(dm>gold_eta) out_h=1로 밀려 최근접 폴백
+    // = "도달 불가 시 가까운 기지" 자동 처리(사용자 지적). 실측 T14: gold_eta=5, node31 dm=4.
+    long long horizon = gold_eta;
+    bool forward_pref = my_b.size() >= 3 && !pivoting; // 경합 포기 후엔 최근접 안전 요새로
+    auto claim_key = [&](int r) {
+      long long dm = P.dist[my_hq][r];
+      long long doo = reachable(P, opp_hq, r) ? P.dist[opp_hq][r] : PINF;
+      int out_h = (forward_pref && dm <= horizon) ? 0 : 1;    // 0 = 창 안(우선)
+      long long fwd = (forward_pref && dm <= doo) ? doo       // 우리편/중앙: opp에 가까울수록 전방
+                                                  : PINF;      // 적진측/비선호: 전방 보너스 없음
+      return std::make_tuple(out_h, fwd, dm);
+    };
+    std::sort(order.begin(), order.end(),
+              [&](int x, int y) { return claim_key(x) < claim_key(y); });
     for (int sh : order) {
       if (building_at(S, sh) || enemy_warrior_at(S, sh, me)) continue;
       const Warrior *w = nullptr;
       long long best = PINF;
       for (auto m2 : avail(mobile)) {
+        if (released.count(m2->id.num)) continue; // 포기한 정착민은 재선발 안 함 → 새로 뽑게
         if (!reachable(P, m2->region, sh)) continue;
         long long d = P.dist[m2->region][sh];
         if (d < best) { best = d; w = m2; }
@@ -1327,23 +1389,7 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
       if (!w) continue;
       // 레이스 판정: "실제로 sh를 노리는" 상대만 레이서 (유령 위협과 동형 오류 방지 —
       // 모든 유휴 상대를 레이서로 보면 중앙 요새 전부 헌납, 확장 3기지 고착).
-      // 레이서 = (a) sh 위/인접에 선 유닛, (b) MOVING이고 예측 후보에 sh 포함.
-      long long enemy_eta = PINF;
-      for (const auto &w2 : S.warriors) {
-        if (w2.id.side == me || w2.hp <= 0) continue;
-        bool racer = false;
-        if (w2.state == WState::MOVING) {
-          auto pit2 = bs.pred.find(w2.id.num);
-          racer = (pit2 == bs.pred.end()) || pit2->second.empty() || pit2->second.count(sh);
-        } else {
-          racer = (w2.region == sh);
-          if (!racer)
-            for (int nb : M.adj[sh]) if (w2.region == nb) { racer = true; break; }
-        }
-        if (!racer) continue;
-        int loc2 = (w2.state == WState::MOVING) ? w2.target : w2.region;
-        if (reachable(P, loc2, sh)) enemy_eta = std::min(enemy_eta, P.dist[loc2][sh]);
-      }
+      long long enemy_eta = enemy_race_eta(sh, /*strict=*/false);
       if (enemy_eta + RACE <= P.dist[w->region][sh]) continue; // clearly lost race
       issue_move(w, sh);
       break; // 한 정착민만
@@ -1528,8 +1574,77 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
       long long dy = reachable(P, y->region, target) ? P.dist[y->region][target] : PINF;
       return dx < dy;
     });
-    for (int i = 0; i < party && i < (int)sorted.size(); ++i) issue_attack(sorted[i], target);
+    // 통합 경유 계산 (사용자 요청): 직행 경로의 중간 방어(터렛+주둔)를 흡수하고도 도착 병력이
+    // 표적 need_mass 이상이면 우회 없이 직행한다(시간 이득 — 71247_3 T116 48경유 승리). 못 미치면
+    // issue_attack의 우회로 병력을 보존. 지역 임계(path_threat≤2) 대신 "경유해도 이기나"로 판단.
+    // 대표 경로위협 = 표적 최근접(선두) 유닛의 path_threat(웨이브가 funnel하는 공유 병목).
+    int sent = std::min<int>(party, (int)sorted.size());
+    long long route_threat = sorted.empty() ? 0 : path_threat(sorted[0]->region, target);
+    bool direct_wins = (long long)sent - route_threat >= (long long)need_mass;
+    for (int i = 0; i < sent; ++i) {
+      if (direct_wins) issue_move(sorted[i], target);   // 경유해도 이김 → 직행
+      else             issue_attack(sorted[i], target); // 손실 크면 우회로 보존
+    }
     bs.atk_target = target;
+  }
+  // === 잉여군 처리: 상대 태세로 분기 — 공세면 전방 대기, 소진이면 경제 재전환 ==========
+  // 수비 draft가 이번 턴 필요 수비수는 이미 확보. 단 위협 건물에 '이미 서 있는' 유닛은 draft가
+  // pin 안 하므로, 먼저 need(+1 마진)만큼 고정해 수비를 지킨 뒤 초과분만 잉여로 다룬다.
+  // - 상대 공세(수적 우위·집결) & 거점 우위: 고HP 잉여를 전방 거점에 대기 → 요격(draft window
+  //   충족)·거점치기(말려죽이기) 가동. HQ-온리 대기면 요격이 헛돈다(사용자 진단).
+  // - 상대 소진(우리가 우세): 유휴 잉여를 work_cap 빈 기지로 즉시 재전환 → 수입 회복. 방어 전투로
+  //   노동자가 빠져 수입이 급락한 걸 신속 복구(사용자 71247_3 T73~81: 8마리 방어 후 찔끔 복귀·
+  //   수입 정체). HQ 위협·웨이브 중엔 홈 수비 우선이라 미발동. 저HP는 hit&return 회수.
+  if (!hq_threatened && !wave_in_flight) {
+    for (auto &kv : atk_hps) { // 위협 건물의 필요 수비수 pin (재전환/전방집결에서 제외)
+      const Building *b = building_at(S, kv.first);
+      if (!b || kv.first == my_hq) continue;
+      int need = min_defenders_to_hold(kv.second, my_whp, b->turret(), 64) + 1; // 안전마진 +1
+      int pin = 0;
+      for (auto w : avail(mobile)) {
+        if (pin >= need) break;
+        if (w->region == kv.first) { used.insert(w->id.num); pin++; }
+      }
+    }
+    bool opp_offensive = opp_bracing || opp_ct >= army_ct; // 상대 공세 태세?
+    if (opp_offensive && (int)my_b.size() > (int)opp_b.size()) {
+      // (a) 전방 잉여 대기: 고HP 잉여를 가장 전방인 안전 거점(우리편/중앙)에 집결
+      int stage = -1;
+      long long best_fwd = PINF;
+      for (const Building *b : my_b) {
+        long long doo = reachable(P, b->region, opp_hq) ? P.dist[b->region][opp_hq] : PINF;
+        long long dmh = reachable(P, my_hq, b->region) ? P.dist[my_hq][b->region] : PINF;
+        if (doo >= PINF || dmh > doo || atk_hps.count(b->region)) continue;
+        if (doo < best_fwd) { best_fwd = doo; stage = b->region; }
+      }
+      if (stage >= 0 && stage != my_hq) {
+        int reserve = std::max(2, 1 + hq_turret); // 홈 수비 예비
+        int kept = 0;
+        for (auto w : avail(mobile)) {
+          if (w->hp * 2 <= my_whp) continue;
+          long long dcur = reachable(P, w->region, opp_hq) ? P.dist[w->region][opp_hq] : PINF;
+          if (dcur <= best_fwd) continue;
+          if (kept < reserve) { kept++; continue; }
+          issue_move(w, stage);
+        }
+      }
+    } else if (!opp_offensive) {
+      // (b) 경제 재전환: 유휴 잉여를 work_cap 빈 아군 기지로 → 도착 즉시 노동 복귀(수입 회복)
+      for (const Building *b : my_b) {
+        int slots = b->work_cap() - garrison_at(b->region);
+        for (int k = 0; k < slots; ++k) {
+          const Warrior *w = nullptr;
+          long long best = PINF;
+          for (auto m2 : avail(mobile)) {
+            if (m2->region == b->region || !reachable(P, m2->region, b->region)) continue;
+            long long d = P.dist[m2->region][b->region];
+            if (d < best) { best = d; w = m2; }
+          }
+          if (!w) break;
+          issue_move(w, b->region);
+        }
+      }
+    }
   }
   // 안전망: 중복 UPGRADE 제거 (referee가 같은 구역 중복 명령을 WA 처리)
   {
