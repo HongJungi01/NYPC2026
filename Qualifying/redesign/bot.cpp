@@ -1243,6 +1243,21 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
   int incoming_hq = atk_hps.count(my_hq) ? (int)atk_hps[my_hq].size() : 0;
   bool rush = incoming_hq >= std::max(3, garrison_at(my_hq) + hq_turret);
   bool behind = opp_ct > army_ct || (int)opp_b.size() > (int)my_b.size();
+  // 상대 잉여(야전) 병력에 유동 대응 (사용자 요청): 자기 건물에 정주하지 않은 상대
+  // 유닛 = 공세 잠재력(노동자 제외). 그중 아직 자기 쪽에 정지해 쌓인 것 = 올인 집결
+  // 신호(레거시 staged_hq_mass 개념). 내 야전군보다 크게 집결 중이면 brace.
+  int opp_field = 0, opp_massed = 0;
+  int my_field = (int)mobile.size();
+  for (const auto &w : S.warriors) {
+    if (w.id.side != opp || w.hp <= 0) continue;
+    const Building *wb = building_at(S, w.region);
+    if (wb && wb->side == opp && w.state == WState::STATIONARY) continue; // 상대 노동자/주둔
+    opp_field++;
+    bool advancing = reachable(P, w.region, my_hq) && reachable(P, w.region, opp_hq) &&
+                     P.dist[w.region][my_hq] < P.dist[w.region][opp_hq];
+    if (!advancing && w.state == WState::STATIONARY) opp_massed++;
+  }
+  bool opp_bracing = opp_massed >= my_field + 3 && opp_massed >= 4; // 집결 = 선제 대응
   bs.dbg_thr = (int)atk_hps.size(); bs.dbg_att = 0;
   for (auto &kv : atk_hps) bs.dbg_att += (int)kv.second.size();
   bs.dbg_inhq = incoming_hq; bs.dbg_rush = rush ? 1 : 0;
@@ -1294,7 +1309,7 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
     int loc = (w.state == WState::MOVING) ? w.target : w.region;
     if (is_sh(loc) && !building_at(S, loc)) inflight++;
   }
-  bool rusher_hold = rush && (int)my_b.size() >= 2; // 러쉬 중엔 HQ+2에서 확장 멈춤(army first)
+  bool rusher_hold = rush && (int)my_b.size() >= 2; // 러쉬 중엔 HQ+2에서 확장 멈춤
   if (inflight == 0 && !rusher_hold) {
     const long long RACE = 2;
     std::vector<int> order;
@@ -1347,6 +1362,8 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
                      : rush ? parity
                             : parity - cap * (int)std::min<long long>(t_arr, parity);
     if (behind) needed_now = std::max(needed_now, std::min(opp_ct, ARMY_HARD_MAX) - 2);
+    // 상대 집결(brace)엔 도착-페이싱을 접고 야전군을 즉시 매칭(선제 수비 준비).
+    if (opp_bracing) needed_now = std::max(needed_now, std::min(opp_field, ARMY_HARD_MAX));
     int cap_army = std::max(econ_floor, needed_now);
     int income_after = WORK_INCOME * std::min(total_cap, army_ct + 1);
     bool sustainable = income_after - UPKEEP_PER_WARRIOR * (army_ct + 1) >= 0;
@@ -1361,7 +1378,7 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
     size_t open_bases = rush ? 2 : 3;
     // econ_open은 "기지 뒤짐"으로 깨지 말 것(전진 게이트와 동형): 조기 개방은 실제
     // 위협(상대 병력 우위)일 때만. 기지 격차는 확장으로 해소.
-    bool econ_open = my_b.size() >= open_bases || hq_threatened || rush || opp_ct > army_ct;
+    bool econ_open = my_b.size() >= open_bases || hq_threatened || rush || opp_ct > army_ct || opp_bracing;
     if (room && sustainable && econ_open && budget >= TRAIN_COST + floor) {
       int n = (int)std::min<long long>(cap, (budget - floor) / TRAIN_COST);
       n = std::min(n, cap_army - army_ct);
