@@ -1352,13 +1352,15 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
     bool sustainable = income_after - UPKEEP_PER_WARRIOR * (army_ct + 1) >= 0;
     bool room = army_ct < cap_army;
     long long floor = pol.train_reserve + (inflight > 0 ? BASE_BUILD_COST : 0); // parity 불가침
-    size_t open_bases = rush ? 2 : 3; // 경제-우선 오프닝: HQ+3 전엔 상비군 없음
-    if (M.N >= 90) open_bases += 1;
-    else if (M.N <= 63) open_bases = std::min(open_bases, (size_t)2);
-    // 경제-우선 오프닝은 "기지 뒤짐"으로 깨지 말 것: 상대가 2번째 기지를 한 턴
-    // 먼저 지으면 behind(기지 OR)가 켜져 open_bases 전에 병력을 뽑아 내 다음 기지가
-    // 밀림(사용자 관측: 2기지 전 유닛 1개 -> 15골드×4턴 손해). 조기 개방은 실제
-    // 위협(상대 병력 우위)일 때만 — 기지 격차는 확장으로 해소(econ-first 유지).
+    // 경제-우선 오프닝(레거시 07031347d L1874 그대로): HQ+2 기지 전엔 상비군 0.
+    // 러쉬(상대 공세)일 때만 HQ+1로 앞당김. 맵크기 조정은 제거 — 내가 넣었던
+    // "N<=63 -> open_bases=2"가 작은 맵에서 2번째 기지 전에 병력을 뽑아 econ 템포를
+    // 깨뜨리는 근인(사용자 관측: 2기지 전 꾸준한 유닛생산 = 지속 손해). 레거시는
+    // 작은 맵에서도 econ-first 유지(seed7: 상대 base2 @T8). 비선형이므로 맵크기
+    // 단조조정은 위험 — 상대 성향(러쉬)에만 반응.
+    size_t open_bases = rush ? 2 : 3;
+    // econ_open은 "기지 뒤짐"으로 깨지 말 것(전진 게이트와 동형): 조기 개방은 실제
+    // 위협(상대 병력 우위)일 때만. 기지 격차는 확장으로 해소.
     bool econ_open = my_b.size() >= open_bases || hq_threatened || rush || opp_ct > army_ct;
     if (room && sustainable && econ_open && budget >= TRAIN_COST + floor) {
       int n = (int)std::min<long long>(cap, (budget - floor) / TRAIN_COST);
