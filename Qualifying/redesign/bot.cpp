@@ -1404,6 +1404,21 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
       if (budget >= cost + pol.econ_reserve + 200 + hq_fund) { a.upgrades.push_back(b->region); budget -= cost; break; }
     }
 
+  // === hit&return 회수 (사용자 rotation): 저HP raider가 전방(상대 쪽)에 정지해 있으면
+  // 홈 최근접 건물로 회수 -> HP-partition이 노동 배정(재생 불가 유닛을 생산으로 전환)
+  // + 고HP로 raider 교체. 축차 소모(전방서 녹음) 대신 지속 가능한 raid 사이클. ==========
+  for (auto w : avail(mobile)) {
+    if (w->state != WState::STATIONARY || w->hp * 2 > my_whp) continue; // 고HP는 계속 전투
+    if (on_my_side(w->region)) continue;                                 // 이미 내 쪽=partition 처리
+    int home = my_hq;
+    long long bd = reachable(P, w->region, my_hq) ? P.dist[w->region][my_hq] : PINF;
+    for (auto b : my_b) {
+      if (!reachable(P, w->region, b->region)) continue;
+      long long d = P.dist[w->region][b->region];
+      if (d < bd) { bd = d; home = b->region; }
+    }
+    issue_move(w, home);
+  }
   // === [강제] 끝내기 + 타깃선정(가치/비용) + anti-trickle (잉여 army) ===========
   std::vector<const Warrior *> army = avail(mobile);
   int attack_force = (int)army.size();
@@ -1494,7 +1509,26 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
   // 상대 HQ 끝내기(승리 레이스)는 예외로 허용.
   bool may_launch = !hq_threatened || target == opp_hq;
   if (target >= 0 && need_mass <= 64 && !wave_in_flight && attack_force >= need_mass && may_launch) {
-    for (auto w : army) issue_attack(w, target);
+    // 전방 raider(사용자 요청, 검증된 인간 전략): 무른(need≤raid_cap) JIT-안전 기지엔
+    // 소수 raid party(raid_cap=5, 후반 7)만 sortie해 연속 파괴 + hit&return, 주력은
+    // 홈 수비. 저HP 귀환병은 partition이 노동 회수·고HP 교체(rotation 자동). 방어된
+    // 기지/HQ 끝내기는 전군 웨이브. 목표에 가까운 순으로 party명 발사(전방 요충 효과).
+    int raid_cap = 5 + (turn >= 130 ? 2 : 0);
+    // raid = 상대 경제를 흔드는 소수 파괴전. 상대가 기지에서 앞서거나(스노볼) 내가
+    // 병력 잉여(전군 웨이브 필요 없음)일 때만 소수 sortie — 그 외엔 전군 웨이브가
+    // 더 결정적(실측: 무조건 raid는 1347d 64->59, 무승부↑). 무른 표적에 한함.
+    bool snowball = (int)opp_b.size() > (int)my_b.size();
+    bool have_surplus = attack_force >= need_mass + raid_cap;
+    bool soft_raid = (target != opp_hq) && (need_mass <= raid_cap) && (snowball || have_surplus);
+    int party = soft_raid ? std::min<int>((int)army.size(), std::max(need_mass + 1, raid_cap))
+                          : (int)army.size();
+    std::vector<const Warrior *> sorted(army.begin(), army.end());
+    std::sort(sorted.begin(), sorted.end(), [&](const Warrior *x, const Warrior *y) {
+      long long dx = reachable(P, x->region, target) ? P.dist[x->region][target] : PINF;
+      long long dy = reachable(P, y->region, target) ? P.dist[y->region][target] : PINF;
+      return dx < dy;
+    });
+    for (int i = 0; i < party && i < (int)sorted.size(); ++i) issue_attack(sorted[i], target);
     bs.atk_target = target;
   }
   // 안전망: 중복 UPGRADE 제거 (referee가 같은 구역 중복 명령을 WA 처리)
