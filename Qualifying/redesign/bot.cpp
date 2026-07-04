@@ -1550,6 +1550,30 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
       if (score > best_score) { best_score = score; target = b->region; need_mass = std::max(need, 2); }
     }
   }
+  // === 극후반 tiebreak 레이드 (사용자): turn-200 판정 = (HQ 생존, HQ 절대 HP). 풀 파괴가 안 되는
+  // 극후반, 내 HQ HP를 보존하며 상대 HQ HP를 '내 것 미만'까지 깎으면 판정승(무승부→승). 절대HP라
+  // 상대가 레벨 높으면 그 차이(hp_gap)만큼 더 깎아야 한다. 도착+siege가 200 전 '여유있게' 끝나도록
+  // ETA로 발동(도착 후 siege 턴 2~8 남는 시점 = 최대 마진에서 커밋), 홈 예비를 반드시 남겨 내 HQ 보존.
+  bool tiebreak_raid = false;
+  int tb_home_keep = 0;
+  if (!hq_finishable && !hq_threatened && ohq && ohq->side == opp && target != opp_hq) {
+    int my_hqhp = hq ? hq->hp : 0;
+    long long tb_eta = reachable(P, my_hq, opp_hq) ? P.dist[my_hq][opp_hq] : PINF;
+    int siege_turns = MAX_TURN - turn - (int)tb_eta; // 도착 후 남는 siege 턴수
+    int hp_gap = ohq->hp - my_hqhp;                  // '내 것 미만'까지 깎을 최소량-1 (>=0)
+    bool endgame = tb_eta < PINF && turn >= 150 && MAX_TURN - turn <= (int)tb_eta + 8;
+    // 1생존=siege 1/턴 보수 가정: siege_turns > hp_gap 이면 hp_gap+1 이상 깎아 '내 것 미만' 확보 가능.
+    if (endgame && siege_turns >= 2 && my_hqhp <= ohq->hp && siege_turns > hp_gap && hq_clear <= 64) {
+      std::vector<int> ehp; // 내 HQ에 닿을 수 있는 상대 잔여 야전군
+      for (const auto &w : S.warriors)
+        if (w.id.side == opp && w.hp > 0 && reachable(P, w.region, my_hq)) ehp.push_back(w.hp);
+      tb_home_keep = std::min(64, min_defenders_to_hold(ehp, my_whp, hq_turret, 64)) + 1;
+      int tb_send = hq_clear + 2; // 여유 margin
+      if (attack_force - tb_send >= std::max(tb_home_keep, hq_turret + 1)) {
+        target = opp_hq; need_mass = hq_clear; tiebreak_raid = true; // 제한 병력 발사 + 홈 고정(아래)
+      }
+    }
+  }
   // --- wave commitment: kill the trickle (design: 랠리 폐지·분산 동시수렴) ---------
   // A wave already in flight to a committed target is NOT reinforced one unit at a
   // time — single-file arrivals just feed the turret (warriors never heal). New army
@@ -1588,7 +1612,8 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
     bool snowball = (int)opp_b.size() > (int)my_b.size();
     bool have_surplus = attack_force >= need_mass + raid_cap;
     bool soft_raid = (target != opp_hq) && (need_mass <= raid_cap) && (snowball || have_surplus);
-    int party = soft_raid ? std::min<int>((int)army.size(), std::max(need_mass + 1, raid_cap))
+    int party = tiebreak_raid ? std::min<int>((int)army.size(), need_mass + 2) // 홈 예비 남기고 최소 발사
+              : soft_raid ? std::min<int>((int)army.size(), std::max(need_mass + 1, raid_cap))
                           : (int)army.size();
     std::vector<const Warrior *> sorted(army.begin(), army.end());
     std::sort(sorted.begin(), sorted.end(), [&](const Warrior *x, const Warrior *y) {
@@ -1608,6 +1633,16 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn
       else             issue_attack(sorted[i], target); // 손실 크면 우회로 보존
     }
     bs.atk_target = target;
+  }
+  // tiebreak 레이드 중엔 홈 예비를 my_hq에 고정 — gather가 전방 rally로 끌어 내 HQ를 노출시키는 것
+  // 방지(pin=used → gather 제외). 근처 유휴를 my_hq로 모아 tb_home_keep만큼 확보 = 내 HQ HP 보존.
+  if (tiebreak_raid) {
+    int have = garrison_at(my_hq);
+    for (auto w : avail(mobile)) {
+      if (have >= tb_home_keep) break;
+      if (w->region == my_hq) { used.insert(w->id.num); have++; }
+      else if (turns_to(P, N, w->region, my_hq) <= 3 && issue_move(w, my_hq)) have++;
+    }
   }
   // === 잉여군 배치 ①단계 — 거점 만석(사용자: 먼저 거점에 주둔). 위협 건물 필요 수비수는 pin.
   // 만석은 income 엔진이자 기지 렙업 조건. 웨이브 중에도 계속(경제는 안 멈춘다 — !hq_threatened만).
