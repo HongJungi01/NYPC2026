@@ -2,7 +2,7 @@
 
 Scoring rule: `1 draw = 0.5 wins`; adjusted score is `W + 0.5D` over 108 games.
 
-Current best: `v40` with adjusted score `64.5/108` (`56-35-17`).
+Current best: `v46` with adjusted score `70.5/108` (`62-29-17`).
 
 | Version | W-L-D | Adj score | Adj rate | N51 | N81 | N109 | Note |
 |---|---:|---:|---:|---:|---:|---:|---|
@@ -34,11 +34,12 @@ Current best: `v40` with adjusted score `64.5/108` (`56-35-17`).
 | `v26` | 48-44-16 | 56.0 | 51.85% | 28.5 | 14.5 | 13.0 |  |
 | `v27` | 56-43-9 | 60.5 | 56.02% | 29.5 | 18.0 | 13.0 |  |
 | `v28` | 49-41-18 | 58.0 | 53.70% | 29.5 | 15.5 | 13.0 | N=81 policy branch; rejected regression |
-| `v40` | 56-35-17 | 64.5 | 59.72% | 29.5 | 22.0 | 13.0 | best/live |
+| `v40` | 56-35-17 | 64.5 | 59.72% | 29.5 | 22.0 | 13.0 |  |
+| `v46` | 62-29-17 | 70.5 | 65.28% | 29.5 | 22.0 | 19.0 | best/live |
 
 ## Latest candidate
 
-`v40` scored `64.5/108` adjusted with `56-35-17`.
+`v46` scored `70.5/108` adjusted with `62-29-17`.
 
 ## Worst opponents in current best
 
@@ -74,3 +75,12 @@ These are one-slice screens and are not plotted in `winrate.svg`; the graph rema
 | `v39` | N81 | 11-19-6 | 14.0 | 18.0 | rejected regression |
 | `v40` | N81 | 18-10-8 | 22.0 | 18.0 | would promote to full matrix |
 | `v41` | N109 | 9-21-6 | 12.0 | 13.0 | rejected regression |
+| `v42` | N109 | 10-20-6 | 13.0 | 13.0 | tie, not promoted |
+| `v43` | N109 | 10-20-6 | 13.0 | 13.0 | tie, not promoted |
+| `v44` | N109 | 9-26-1 | 9.5 | 13.0 | rejected regression |
+| `v45` | N109 | 11-21-4 | 13.0 | 13.0 | tie, not promoted |
+| `v46` | N109 | 16-14-6 | 19.0 | 13.0 | would promote to full matrix |
+| `v47` | N51 | 25-10-1 | 25.5 | 29.5 | rejected regression |
+| `v48` | N81 | 10-17-9 | 14.5 | 18.0 | rejected regression |
+| `v49` | N81 | 18-10-8 | 22.0 | 18.0 | would promote to full matrix |
+| `v50` | N81 | 17-14-5 | 19.5 | 18.0 | would promote to full matrix |

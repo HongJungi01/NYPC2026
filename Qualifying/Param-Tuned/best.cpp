@@ -1029,6 +1029,10 @@ const Policy BALANCED_MID{6, 140, 40, 35, 130, 10, true};
 const Policy TURTLE_MID{9, 260, 50, 75, 120, 14, true};
 const Policy RUSH_MID{4, 70, 0, 15, 150, 5, false};
 const Policy EXPAND_MID{7, 170, 40, 50, 125, 16, true};
+const Policy BALANCED_LARGE{5, 200, 80, 40, 170, 6, false};
+const Policy TURTLE_LARGE{8, 350, 80, 90, 150, 10, true};
+const Policy RUSH_LARGE{3, 80, 0, 18, 175, 3, false};
+const Policy EXPAND_LARGE{6, 250, 80, 60, 165, 12, true};
 } // namespace presets
 
 static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, int turn, BotState &bs,
@@ -1521,13 +1525,14 @@ static Cmds strategy_manager(const SimState &S0, const GameMap &M, const Paths &
   const Side me = M.my_side, opp = opposite(me);
   const int K = std::max(1, std::min(MAX_TURN - turn, (M.N >= 70 && M.N < 100) ? 8 : 10)); // credible horizon
   const bool mid_map = M.N >= 70 && M.N < 100;
+  const bool large_map = M.N >= 100;
   const Policy cands[] = {
-      mid_map ? presets::BALANCED_MID : presets::BALANCED,
-      mid_map ? presets::TURTLE_MID : presets::TURTLE,
-      mid_map ? presets::RUSH_MID : presets::RUSH,
-      mid_map ? presets::EXPAND_MID : presets::EXPAND
+      mid_map ? presets::BALANCED_MID : (large_map ? presets::BALANCED_LARGE : presets::BALANCED),
+      mid_map ? presets::TURTLE_MID : (large_map ? presets::TURTLE_LARGE : presets::TURTLE),
+      mid_map ? presets::RUSH_MID : (large_map ? presets::RUSH_LARGE : presets::RUSH),
+      mid_map ? presets::EXPAND_MID : (large_map ? presets::EXPAND_LARGE : presets::EXPAND)
   };
-  const Policy oppol = mid_map ? presets::BALANCED_MID : presets::BALANCED;
+  const Policy oppol = mid_map ? presets::BALANCED_MID : (large_map ? presets::BALANCED_LARGE : presets::BALANCED);
   GameMap oppM = M;
   oppM.my_side = opp;
   oppM.my_hq = hq_region_of(M, opp);
