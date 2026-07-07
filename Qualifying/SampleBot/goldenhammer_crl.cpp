@@ -2270,7 +2270,10 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, const Re
     // else: 이번 턴 발사 보류 → BUILDUP 지속. 완전 파괴가 끝내 불가하면 아래 tiebreak-raid(C 폴백)로 저하.
   }
 #endif
-  if (!hq_finishable && !hq_threatened && ohq && ohq->side == opp && target != opp_hq) {
+  // hq_threatened 면제(사용자 07-07, 93380_5): 상대가 먼저 커밋한 극후반 올인이 창(tb_eta+8)
+  // 내내 게이트를 잠가 우리 레이드가 영영 미발동→DRAW. 판정전에선 상대 올인=상대 홈 공동(空洞)
+  // 신호이기도 하다. 홈 보존은 아래 tb_home_keep(내 HQ에 닿는 상대 야전군 전원 hold 판정+1)이 담당.
+  if (!hq_finishable && ohq && ohq->side == opp && target != opp_hq) {
     int my_hqhp = hq ? hq->hp : 0;
     long long tb_eta = reachable(P, my_hq, opp_hq) ? turns_to(P, N, my_hq, opp_hq) : PINF; // 내 도착 턴수(레퍼리 정확)
     int siege_turns = MAX_TURN - turn - (int)tb_eta; // 도착 후 남는 siege 턴수
