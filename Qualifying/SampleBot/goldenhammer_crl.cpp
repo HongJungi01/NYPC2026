@@ -17,6 +17,11 @@
 //   ⑩경합 전쟁 중 경제 = 전쟁 전용 — HQ/기지 업글·상비군 등 재량 지출 전면 동결
 //     (수비 비상훈련만 예외: 다른 데 돈 쓰면 경합전쟁 짐)
 //
+// homeHalf(기능 #6, 07-07 이식): §4 후보 R 구성에서 상대쪽(doo < α·dm) 거점 제외 —
+//   farthest-in-window가 상대진영 깊숙이 지으면 상대 증원 거리가 짧아 금방 뺏긴다.
+//   α=0.90(중앙선 거의 등거리까지만; homeHalf α 이력 1.0→0.75→0.45→0.90). 척도는
+//   true_center 선정과 동일(가중거리 P.dist, 상대 도달불가는 우리쪽 취급). 정수 백분율.
+//
 // Build:
 //   g++ -O2 -std=c++17 SampleBot/goldenhammer_crl.cpp -o SampleBot/goldenhammer_crl.exe
 //   (+ -DSIM_TEST / -DOBS_TEST 게이트 동일, + -DBOTDBG 결정층 디버그)
@@ -1854,6 +1859,15 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, const Re
     if (sh == true_center) continue; // 중앙 = 상시 슬롯 전담
     if (building_at(S, sh) || enemy_warrior_at(S, sh, me)) continue;
     if (built_here.count(sh) || committed_sh.count(sh)) continue;
+    // (homeHalf 07-07) 상대쪽(doo < α·dm) 거점 제외 — 지어도 상대 증원 거리가
+    // 짧아 금방 뺏긴다(순손실). 척도는 true_center 선정과 동일(맵 고정 기하속성
+    // = 가중거리 P.dist, 상대 도달불가는 우리쪽 취급). α=0.90 = 중앙선 거의
+    // 등거리까지만 개방(homeHalf α 이력 1.0→0.75→0.45→0.90). 정수 백분율 판정.
+    {
+      long long dm = P.dist[my_hq][sh];
+      long long doo = reachable(P, opp_hq, sh) ? P.dist[opp_hq][sh] : PINF;
+      if (doo < PINF && doo * 100 < 90 * dm) continue;
+    }
     long long h = eta_sched(my_hq, sh);
     if (h >= PINF) continue;
     R.push_back({sh, h});
