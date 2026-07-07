@@ -1,8 +1,4 @@
-// NEXT NATION — goldenhammer2_crl (07-07): goldenhammer_crl(= goldenhammer + centerRelapse
-// 이식, 사용자 판정 10건 + 극후반 tiebreak 재작성 + homeHalf) 위에 goldenhammer2의
-// '랠리 전환 게이트'(rally stage 후보 = RALLY_CONVERT_WINDOW 내 공격 전환 가능한 곳만)를
-// 이식한 합본. goldenhammer2에 남아있던 구식 게이트(타이브레이크 hq_threatened, march_reinf
-// 팬텀 tb 판정 등)는 승계하지 않음 — 그쪽 델타는 랠리 계열뿐이고 베이스가 이 파일의 최신판.
+// NEXT NATION — goldenhammer + centerRelapse 프로토타입 (07-07, 사용자 판정 10건 반영).
 // 베이스 = goldenhammer.cpp(clean-room rebuild) 그대로, 확장/중앙 스케줄링만
 // redesign/centerRelapse.cpp(#2 무빙테이블 + #4 HQ스와프 + #5 창판정·경합회귀) 체계로 교체.
 //
@@ -21,18 +17,9 @@
 //   ⑩경합 전쟁 중 경제 = 전쟁 전용 — HQ/기지 업글·상비군 등 재량 지출 전면 동결
 //     (수비 비상훈련만 예외: 다른 데 돈 쓰면 경합전쟁 짐)
 //
-// homeHalf(기능 #6, 07-07 이식): §4 후보 R 구성에서 상대쪽(doo < α·dm) 거점 제외 —
-//   farthest-in-window가 상대진영 깊숙이 지으면 상대 증원 거리가 짧아 금방 뺏긴다.
-//   α=0.90(중앙선 거의 등거리까지만; homeHalf α 이력 1.0→0.75→0.45→0.90). 척도는
-//   true_center 선정과 동일(가중거리 P.dist, 상대 도달불가는 우리쪽 취급). 정수 백분율.
-//
-// 랠리 전환 게이트(goldenhammer2 이식): stage 후보 기지에서 RALLY_CONVERT_WINDOW(기본 6)턴
-//   안에 실제 공격 전환(가치/비용 표적 존재 + 질량 적시 도달, 적 기지 전멸 시 HQ 폴백)이
-//   성립해야만 rally 채택 — 전환 불가한 집결(영구 대기 허브)을 금지. RALLY_AUDIT로 계측.
-//
 // Build:
-//   g++ -O2 -std=c++17 SampleBot/goldenhammer2_crl.cpp -o SampleBot/goldenhammer2_crl.exe
-//   (+ -DSIM_TEST / -DOBS_TEST 게이트 동일, + -DBOTDBG 결정층 디버그, + -DRALLY_AUDIT)
+//   g++ -O2 -std=c++17 SampleBot/goldenhammer_crl.cpp -o SampleBot/goldenhammer_crl.exe
+//   (+ -DSIM_TEST / -DOBS_TEST 게이트 동일, + -DBOTDBG 결정층 디버그)
 //
 // The simulator is ported 1:1 from the referee (testing-tool-practice.py, run_game
 // order). SIM_TEST replays a referee log and asserts the result block byte-for-byte;
@@ -72,10 +59,6 @@ constexpr int BASE_HEAL_COST = 500;
 [[maybe_unused]] constexpr long long OC_GOLD_FLOOR   = 1500; // 유휴금화 버퍼 하한(수비훈련+식비 런웨이)
 [[maybe_unused]] constexpr int       OC_STRIKE_MARGIN = 3;   // hq_clear 위 결정타 여유
 [[maybe_unused]] constexpr int       OC_MIN_SIEGE     = 3;   // 도착 후 최소 공성 턴 여유
-#endif
-
-#ifndef RALLY_CONVERT_WINDOW_TURNS
-#define RALLY_CONVERT_WINDOW_TURNS 6
 #endif
 
 // Whole-game token bank (초읽기), parsed from the referee's TIME result line by
@@ -1062,19 +1045,6 @@ struct BotState {
   int dbg_thr = 0, dbg_att = 0, dbg_inhq = 0, dbg_rush = 0; // BOTDBG 계측 (live 호출이 마지막)
 };
 
-#ifdef RALLY_AUDIT
-struct RallyAuditRecord {
-  int turn = 0;
-  int raw_stage = -1;
-  int stage = -1;
-  int raw_candidates = 0;
-  int pass_candidates = 0;
-  bool rally_fill = false;
-  int rally_moves = 0;
-};
-static std::vector<RallyAuditRecord> g_rally_audit;
-#endif
-
 // HP-aware partition: fill each building's work_cap with the LOWEST-hp stationary
 // units (군 체력=재생불가 자원 -> 저HP는 노동, 고HP는 전투 보존). Rest = mobile.
 // (centerRelapse #2) 미션 캐리어(경유 대기 중)는 떠날 몸이라 노동자로 세지 않는다.
@@ -1884,15 +1854,6 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, const Re
     if (sh == true_center) continue; // 중앙 = 상시 슬롯 전담
     if (building_at(S, sh) || enemy_warrior_at(S, sh, me)) continue;
     if (built_here.count(sh) || committed_sh.count(sh)) continue;
-    // (homeHalf 07-07) 상대쪽(doo < α·dm) 거점 제외 — 지어도 상대 증원 거리가
-    // 짧아 금방 뺏긴다(순손실). 척도는 true_center 선정과 동일(맵 고정 기하속성
-    // = 가중거리 P.dist, 상대 도달불가는 우리쪽 취급). α=0.90 = 중앙선 거의
-    // 등거리까지만 개방(homeHalf α 이력 1.0→0.75→0.45→0.90). 정수 백분율 판정.
-    {
-      long long dm = P.dist[my_hq][sh];
-      long long doo = reachable(P, opp_hq, sh) ? P.dist[opp_hq][sh] : PINF;
-      if (doo < PINF && doo * 100 < 90 * dm) continue;
-    }
     long long h = eta_sched(my_hq, sh);
     if (h >= PINF) continue;
     R.push_back({sh, h});
@@ -2509,99 +2470,9 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, const Re
       }
     }
   }
-  // (goldenhammer2 이식) harass 지역 람다를 호이스팅 — rally 전환 게이트가 재사용.
-  auto enemy_clear_mass = [&](const Building *b) {
-    std::vector<int> def;
-    for (const auto &w : S.warriors)
-      if (w.id.side == opp && w.hp > 0 && w.region == b->region) def.push_back(w.hp);
-    return min_mass_to_take(my_whp, def, b->turret(), 64);
-  };
-  auto enemy_garrison_count = [&](const Building *b) {
-    int g = 0;
-    for (const auto &w : S.warriors)
-      if (w.id.side == opp && w.hp > 0 && w.region == b->region) g++;
-    return g;
-  };
-  // 표적 가치/비용 (사용자): 거리최근접 대신 가치(상대 수입차단 골드등가 + 기지격파 300)/비용(예상
-  // HP손실=투입−생존 ×120 + 이동잠금 홉×수입 + 마진 1기)로 정렬. HP손실 항이 순손실 레이드를 자연
-  // 기각(리졸버 '승리'여도 교환 손해면 sc<1로 제외). from = 발사 기준 구역.
-  auto base_value_cost_score = [&](int from, const Building *b) -> double {
-    if (!b || b->type != BType::BASE || !reachable(P, from, b->region)) return -1.0;
-    std::vector<int> def;
-    int lab = 0;
-    for (const auto &w : S.warriors)
-      if (w.id.side == opp && w.hp > 0 && w.region == b->region) { def.push_back(w.hp); lab++; }
-    int need = min_mass_to_take(my_whp, def, b->turret(), 64);
-    if (need > 64) return -1.0; // 못 먹음
-    int surv = region_fight_survivors(std::vector<int>(need, my_whp), def, b->turret());
-    int lost = std::max(0, need - surv);
-    double value = (double)WORK_INCOME * std::min(lab, b->work_cap()) *
-                       std::min(std::max(1, MAX_TURN - turn), 23) +
-                   BASE_BUILD_COST; // 기지 격파 = 재훈련 불가 영구손실
-    double cost = (double)lost * TRAIN_COST +
-                  (double)turns_to(P, N, from, b->region) * WORK_INCOME + TRAIN_COST;
-    return value / cost;
-  };
-  // (goldenhammer2 이식) rally 전환 게이트: stage 후보에서 window 턴 안에 실제 공격
-  // 전환이 성립하는가 — ①window 내 도달·가치/비용≥1 표적(b1, 후방이면 b2 sizing까지)에
-  // 필요 질량이 window 내 집결 가능, 또는 ②적 기지 전멸 시 적 HQ가 window 내(끝내기
-  // 질량 hq_clear+1 적시 집결). 불가한 후보는 영구 대기 허브 = rally 금지.
-  constexpr int RALLY_CONVERT_WINDOW = RALLY_CONVERT_WINDOW_TURNS;
-  auto rally_ready_by = [&](int cand, int need) -> long long {
-    if (need <= 0) return 0;
-    std::vector<long long> eta;
-    for (auto w : avail(mobile)) {
-      if (w->hp * 2 <= my_whp || !reachable(P, w->region, cand)) continue;
-      eta.push_back(turns_to(P, N, w->region, cand));
-    }
-    std::sort(eta.begin(), eta.end());
-    if ((int)eta.size() < need) return PINF;
-    return eta[need - 1];
-  };
-  auto rally_can_convert = [&](int cand) -> bool {
-    bool has_enemy_base = false;
-    std::vector<std::pair<double, const Building *>> targets;
-    for (const Building *b : opp_b) {
-      if (b->type != BType::BASE) continue;
-      has_enemy_base = true;
-      if (!reachable(P, cand, b->region)) continue;
-      if (turns_to(P, N, cand, b->region) > RALLY_CONVERT_WINDOW) continue;
-      if (enemy_garrison_count(b) > 6) continue;
-      double sc = base_value_cost_score(cand, b);
-      if (sc < 1.0) continue;
-      targets.push_back({sc, b});
-    }
-    if (!targets.empty()) {
-      std::sort(targets.begin(), targets.end(), [](auto &x, auto &y) { return x.first > y.first; });
-      const Building *b1 = targets[0].second;
-      const Building *b2 = nullptr;
-      double b2best = 0;
-      for (const Building *b : opp_b) {
-        if (b->type != BType::BASE || b == b1) continue;
-        if (!reachable(P, b1->region, b->region) || enemy_garrison_count(b) > 6) continue;
-        double sc = base_value_cost_score(b1->region, b);
-        if (sc >= 1.0 && sc > b2best) { b2best = sc; b2 = b; }
-      }
-      long long cand_dmh = reachable(P, my_hq, cand) ? P.dist[my_hq][cand] : PINF;
-      long long cand_doo = reachable(P, opp_hq, cand) ? P.dist[opp_hq][cand] : PINF;
-      int need = enemy_clear_mass(b1);
-      if (cand_dmh <= cand_doo && b2) need += enemy_clear_mass(b2); // 실제 harass sizing과 동일
-      need = std::max(2, need + 1);
-      if (need <= 64 && rally_ready_by(cand, need) <= RALLY_CONVERT_WINDOW) return true;
-    }
-    if (!has_enemy_base && ohq && ohq->side == opp && hq_clear <= 63 &&
-        reachable(P, cand, opp_hq) &&
-        turns_to(P, N, cand, opp_hq) <= RALLY_CONVERT_WINDOW) {
-      return rally_ready_by(cand, std::max(2, hq_clear + 1)) <= RALLY_CONVERT_WINDOW;
-    }
-    return false;
-  };
   // === rally 산정 — 잉여를 모을 '맵 전체에 유효한 집결지': 안전 아군 건물(우리편/중앙, 위협 없음)
   // 중 적 기지들까지 거리 '합'이 최소인 곳 = 어느 약체든 짧게 치고 짧게 회수하는 중앙-전방 허브.
   int stage = -1;
-#ifdef RALLY_AUDIT
-  int audit_raw_stage = -1, audit_raw_candidates = 0, audit_pass_candidates = 0;
-#endif
   {
     // 내가 거점을 먹어 전진할수록 rally도 '안전·전방'으로 전진해야 마무리 출발이 빠르다
     // (73728: rally가 정중앙 52에 고정 → 전군이 후방서 모여 먼 적HQ 104를 못 끝냄 = 무승부).
@@ -2609,9 +2480,6 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, const Re
     // = 최전방·유리 우선. 전방(dmh>doo) 후보는 내가 거점 우위일 때만(열세면 후방 유지 — 홈 노출 방지).
     bool base_ahead = (int)my_b.size() > (int)opp_b.size();
     long long best = PINF;
-#ifdef RALLY_AUDIT
-    long long audit_raw_best = PINF;
-#endif
     for (const Building *b : my_b) {
       long long dmh = reachable(P, my_hq, b->region) ? P.dist[my_hq][b->region] : PINF;
       long long doo = reachable(P, opp_hq, b->region) ? P.dist[opp_hq][b->region] : PINF;
@@ -2625,14 +2493,6 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, const Re
           cnt++;
         }
       long long score = cnt > 0 ? sum : doo; // 적 기지 없으면 적HQ 근접(전방)으로 폴백
-#ifdef RALLY_AUDIT
-      audit_raw_candidates++;
-      if (score < audit_raw_best) { audit_raw_best = score; audit_raw_stage = b->region; }
-#endif
-      if (!rally_can_convert(b->region)) continue;            // window 내 공격 전환 불가 stage 금지
-#ifdef RALLY_AUDIT
-      audit_pass_candidates++;
-#endif
       if (score < best) { best = score; stage = b->region; }
     }
   }
@@ -2652,7 +2512,6 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, const Re
     if (on_my_side(b->region) && garrison_at(b->region) < b->work_cap()) { ourside_full = false; break; }
   bool expand_done = (inflight == 0);
   bool rally_fill = (ourside_full || opp_bracing) && expand_done; // gather(집결·요격 겸용)
-  int rally_moves = 0;
   // 발사(harass)는 만석 완성 + 확장종료일 때만 — 상대집결만으론 요격 예비만 채우고 선제공격은 안 함.
   if (!wave_in_flight && bs.atk_target < 0) {
     if (ourside_full && expand_done) {
@@ -2674,8 +2533,37 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, const Re
         long long dy = reachable(P, y, opp_hq) ? P.dist[y][opp_hq] : PINF;
         return dx < dy; // 가장 전방(opp_hq 근접) 발사점 먼저 → 롤 우선
       });
-      // (goldenhammer2) clear_mass/gar_of/vc_score는 상위로 호이스팅(enemy_clear_mass/
-      // enemy_garrison_count/base_value_cost_score) — rally 전환 게이트와 공유.
+      auto clear_mass = [&](const Building *b) {
+        std::vector<int> def;
+        for (const auto &w : S.warriors)
+          if (w.id.side == opp && w.hp > 0 && w.region == b->region) def.push_back(w.hp);
+        return min_mass_to_take(my_whp, def, b->turret(), 64);
+      };
+      auto gar_of = [&](const Building *b) {
+        int g = 0;
+        for (const auto &w : S.warriors)
+          if (w.id.side == opp && w.hp > 0 && w.region == b->region) g++;
+        return g;
+      };
+      // 표적 가치/비용 (사용자): 거리최근접 대신 가치(상대 수입차단 골드등가 + 기지격파 300)/비용(예상
+      // HP손실=투입−생존 ×120 + 이동잠금 홉×수입 + 마진 1기)로 정렬. HP손실 항이 순손실 레이드를 자연
+      // 기각(리졸버 '승리'여도 교환 손해면 sc<1로 제외). from = 발사 기준 구역.
+      auto vc_score = [&](int from, const Building *b) -> double {
+        std::vector<int> def;
+        int lab = 0;
+        for (const auto &w : S.warriors)
+          if (w.id.side == opp && w.hp > 0 && w.region == b->region) { def.push_back(w.hp); lab++; }
+        int need = min_mass_to_take(my_whp, def, b->turret(), 64);
+        if (need > 64) return -1.0; // 못 먹음
+        int surv = region_fight_survivors(std::vector<int>(need, my_whp), def, b->turret());
+        int lost = std::max(0, need - surv);
+        double value = (double)WORK_INCOME * std::min(lab, b->work_cap()) *
+                           std::min(std::max(1, MAX_TURN - turn), 23) +
+                       BASE_BUILD_COST; // 기지 격파 = 재훈련 불가 영구손실
+        double cost = (double)lost * TRAIN_COST +
+                      (double)turns_to(P, N, from, b->region) * WORK_INCOME + TRAIN_COST;
+        return value / cost;
+      };
       for (int lp : lps) {
         std::vector<const Warrior *> staged; // 이 발사점에 모인 고HP 뭉치(동시 출발분)
         for (auto w : avail(mobile))
@@ -2684,8 +2572,8 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, const Re
         // b1/b3 = lp에서 가치/비용 상위 1·2위 (gar>6·못먹음·순손실 sc<1 제외)
         std::vector<std::pair<double, const Building *>> cand;
         for (const Building *b : opp_b) {
-          if (b->type != BType::BASE || !reachable(P, lp, b->region) || enemy_garrison_count(b) > 6) continue;
-          double sc = base_value_cost_score(lp, b);
+          if (b->type != BType::BASE || !reachable(P, lp, b->region) || gar_of(b) > 6) continue;
+          double sc = vc_score(lp, b);
           if (sc >= 1.0) cand.push_back({sc, b});
         }
         if (cand.empty()) continue;
@@ -2696,16 +2584,16 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, const Re
         double b2best = 0;
         for (const Building *b : opp_b) {
           if (b->type != BType::BASE || b == b1) continue;
-          if (!reachable(P, b1->region, b->region) || enemy_garrison_count(b) > 6) continue;
-          double sc = base_value_cost_score(b1->region, b);
+          if (!reachable(P, b1->region, b->region) || gar_of(b) > 6) continue;
+          double sc = vc_score(b1->region, b);
           if (sc >= 1.0 && sc > b2best) { b2best = sc; b2 = b; }
         }
         // sizing(사용자: 2거점분으로 축소 — b3 복귀버퍼 제거): 후방 랠리 발사 = 두 거점분(b1+b2, 롤
         // 이어치기까지) / 전방 발사점(롤) = 한 거점분. b3 clear_mass는 더 이상 규모에 안 더한다.
         long long lp_dmh = reachable(P, my_hq, lp) ? P.dist[my_hq][lp] : PINF;
         long long lp_doo = reachable(P, opp_hq, lp) ? P.dist[opp_hq][lp] : PINF;
-        int need = enemy_clear_mass(b1);
-        if (lp_dmh <= lp_doo && b2) need += enemy_clear_mass(b2); // 후방 랠리 = 2거점 sizing
+        int need = clear_mass(b1);
+        if (lp_dmh <= lp_doo && b2) need += clear_mass(b2); // 후방 랠리 = 2거점 sizing
         need = std::max(2, need + 1);
         if ((int)staged.size() >= need) { // 발사점에 need만큼 모임 → 전량 동시 발사(b1로)
           for (int i = 0; i < need && i < (int)staged.size(); ++i)
@@ -2733,13 +2621,9 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, const Re
       const Building *wb = building_at(S, w->region);
       if (wb && wb->side == opp) continue;
       const Warrior *u = relay_pick(w, stage); // 전방 노동자 스왑(랠리 니즈 조기 충족)
-      if (issue_route(u, stage)) rally_moves++;
+      issue_route(u, stage);
     }
   }
-#ifdef RALLY_AUDIT
-  g_rally_audit.push_back({turn, audit_raw_stage, stage, audit_raw_candidates,
-                           audit_pass_candidates, rally_fill, rally_moves});
-#endif
   } // end if(!war) — 공세·랠리·잉여배치 동결 블록
   // 안전망: UPGRADE 무효화 방지 — (1) 같은 구역 중복(WA), (2) 적 유닛 있는 구역(건설·렙업·힐
   // 모두 '적 유닛 존재 시 UPGRADE 불가'=WA=즉시 몰수). 73728 T197 반칙패: 점령 기지 101에 상대
