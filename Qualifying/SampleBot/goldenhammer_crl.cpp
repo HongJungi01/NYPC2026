@@ -2250,8 +2250,10 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, const Re
   // === 극후반 tiebreak 레이드 (사용자): turn-200 판정 = (HQ 생존, HQ 절대 HP). 풀 파괴가 안 되는
   // 극후반, 내 HQ HP를 보존하며 상대 HQ HP를 '내 것 미만'까지 깎으면 판정승(무승부→승). 절대HP라
   // 상대가 레벨 높으면 그 차이(hp_gap)만큼 더 깎아야 한다. 도착+siege가 200 전 '여유있게' 끝나도록
-  // ETA로 발동(도착 후 siege 턴 2~8 남는 시점 = 최대 마진에서 커밋), 홈 예비를 반드시 남겨 내 HQ 보존.
+  // '실제 보낼 병력'의 도착 ETA로 발동(k번째 도착 후 siege 2~8턴 남는 최대 마진에서 커밋),
+  // 홈 예비를 반드시 남겨 내 HQ 보존.
   int tb_home_keep = 0;
+  bool tb_fire = false; // 이번 턴 판정 레이드 발화 — 진행 중 기지 웨이브보다 우선(커밋 교체)
 #ifdef EVAL_OVERCOMMIT
   // === 오버커밋 발사: 포화+우위로 유휴금화 결진을 쌓았고, 홈예비를 남기고도 결정타가
   // 서면 상대 HQ에 단일 웨이브 커밋. march_reinf 인플레(hq_clear)를 그대로 존중 —
@@ -2273,42 +2275,73 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, const Re
   // hq_threatened 면제(사용자 07-07, 93380_5): 상대가 먼저 커밋한 극후반 올인이 창(tb_eta+8)
   // 내내 게이트를 잠가 우리 레이드가 영영 미발동→DRAW. 판정전에선 상대 올인=상대 홈 공동(空洞)
   // 신호이기도 하다. 홈 보존은 아래 tb_home_keep(내 HQ에 닿는 상대 야전군 전원 hold 판정+1)이 담당.
-  if (!hq_finishable && ohq && ohq->side == opp && target != opp_hq) {
+  if (!hq_finishable && ohq && ohq->side == opp && target != opp_hq && turn >= 150) {
     int my_hqhp = hq ? hq->hp : 0;
-    long long tb_eta = reachable(P, my_hq, opp_hq) ? turns_to(P, N, my_hq, opp_hq) : PINF; // 내 도착 턴수(레퍼리 정확)
-    int siege_turns = MAX_TURN - turn - (int)tb_eta; // 도착 후 남는 siege 턴수
-    int hp_gap = ohq->hp - my_hqhp;                  // '내 것 미만'까지 깎을 최소량-1 (>=0)
-    bool endgame = tb_eta < PINF && turn >= 150 && MAX_TURN - turn <= (int)tb_eta + 8;
-    // 1생존=siege 1/턴 보수 가정: siege_turns > hp_gap 이면 hp_gap+1 이상 깎아 '내 것 미만' 확보 가능.
-    if (endgame && siege_turns >= 2 && my_hqhp <= ohq->hp && siege_turns > hp_gap && hq_clear <= 64) {
-      std::vector<int> ehp; // 내 HQ에 닿을 수 있는 상대 잔여 야전군
+    int hp_gap = ohq->hp - my_hqhp; // '내 것 미만'까지 깎을 최소량-1 (>=0)
+    if (my_hqhp <= ohq->hp) {
+      // (사용자 07-07, 93481) 팬텀 요새 오판 제거 — 수비 = '관측' 기반: 현 주둔+터렛 +
+      // 상대가 실제로 남길 수 있는 재훈련(골드 추정+수입 상한, 캡 12)만. march_reinf 24
+      // + sustain 12 일괄 인플레는 중반 원정자살 방지용이라 판정 레이드엔 부적합 —
+      // 93380/93481 실측: 상대는 전 훈련분을 우리 HQ로 스트리밍해 홈 주둔 0~1인데
+      // 모델은 36팬텀 요새로 계산 → hq_clear 40+ → 영영 미발동 → DRAW.
+      std::vector<int> tb_def; // 상대 HQ '현 주둔' 관측
+      for (const auto &w : S.warriors)
+        if (w.id.side == opp && w.hp > 0 && w.region == opp_hq) tb_def.push_back(w.hp);
+      // (사용자 07-07, 93481) 창·siege 기점 = 내 HQ가 아니라 '실제 보낼 병력' 위치.
+      // 커밋 풀 = 잉여 army + 징집권 노동자(수비 grind 영역 atk_hps 제외 — 필요
+      // 수비수 불가침), ETA 오름차순. k번째 ETA = 필요 질량 k가 전부 도착하는 턴 —
+      // 전방군(93481 T190: 91·100 = 104에서 2~3홉)이 후방 HQ 기점 수식(13홉,
+      // 창 T185 마감)에 버려지던 것을 복원. 극후반 노동 수입 < 판정 HP.
+      struct TBody { const Warrior *w; long long eta; bool draft; };
+      std::vector<TBody> pool;
+      for (auto w : army)
+        if (reachable(P, w->region, opp_hq)) pool.push_back({w, turns_to(P, N, w->region, opp_hq), false});
+      for (auto lw : avail(laborers)) {
+        if (atk_hps.count(lw->region)) continue;
+        if (!reachable(P, lw->region, opp_hq)) continue;
+        pool.push_back({lw, turns_to(P, N, lw->region, opp_hq), true});
+      }
+      std::sort(pool.begin(), pool.end(),
+                [](const TBody &x, const TBody &y) { return x.eta < y.eta; });
+      std::vector<int> ehp; // 내 HQ에 닿을 수 있는 상대 잔여 야전군(홈 보존 판정)
       for (const auto &w : S.warriors)
         if (w.id.side == opp && w.hp > 0 && reachable(P, w.region, my_hq)) ehp.push_back(w.hp);
       tb_home_keep = std::min(64, min_defenders_to_hold(ehp, my_whp, hq_turret, 64)) + 1;
-      int tb_send = hq_clear + 2; // 여유 margin
-      // (사용자 07-07) 규모 판정에 '징집령'까지 포함: 잉여 army만으로 미달이면
-      // 수비 grind 영역 밖 노동자(위협 기지(atk_hps) 소속 제외 — 필요 수비수
-      // 불가침, used=이미 징집된 몸은 avail이 제외) 전원을 셈에 넣어 재판정.
-      // 극후반이라 노동 수입 손실보다 판정 HP가 게임을 결정한다. 징집으로만
-      // 성립하는 경우에 한해 실제 징집 발동(army에 편입 → 아래 웨이브가 발사).
-      std::vector<const Warrior *> tb_draft;
-      for (auto lw : avail(laborers)) {
-        if (atk_hps.count(lw->region)) continue; // grind 영역(위협 기지) = 불가침
-        if (!reachable(P, lw->region, opp_hq)) continue;
-        tb_draft.push_back(lw);
-      }
-      int have = attack_force;
-      bool conscript = false;
-      if (have - tb_send < std::max(tb_home_keep, hq_turret + 1)) {
-        have += (int)tb_draft.size();
-        conscript = true;
-      }
-      if (have - tb_send >= std::max(tb_home_keep, hq_turret + 1)) {
-        target = opp_hq; need_mass = hq_clear; // 제한 병력 발사 + 홈 고정(아래)
-        if (conscript) {
-          for (auto lw : tb_draft) army.push_back(lw); // 징집령: 웨이브 풀에 편입
+      int home_floor = std::max(tb_home_keep, hq_turret + 1);
+      long long opp_inc = side_income(S, opp);
+      long long opp_purse = std::max(0LL, S.gold[(int)opp]); // 월드모델 추정(naive=저평가 쪽)
+      for (int k = 2; k <= (int)pool.size(); ++k) {
+        long long eta_k = pool[k - 1].eta;
+        int siege_turns = MAX_TURN - turn - (int)eta_k;
+        // 1생존=siege 1/턴 보수 가정: siege_turns > hp_gap 이면 '내 것 미만' 확보 가능.
+        if (siege_turns < 2 || siege_turns <= hp_gap) break; // eta 오름차순 → 이후 k는 더 늦음
+        if (MAX_TURN - turn > eta_k + 8) continue;           // 최대 마진 창(조기발사 억제) 유지
+        int retrain = (int)std::min<long long>({(long long)ohq_tc * (eta_k + 2),
+                                                (opp_purse + opp_inc * (eta_k + 2)) / TRAIN_COST,
+                                                12LL});
+        int clear_k = min_mass_to_take(my_whp, tb_def, ohq_turret, 64, ohq_whp, ohq_tc, retrain);
+        if (clear_k > 64) break;
+        int need_k = clear_k + 2; // 여유 margin
+        if (k < need_k) { // 질량 미달 → need_k번째 도착 기준으로 점프 재판정
+          if (need_k > (int)pool.size()) break;
+          k = need_k - 1;
+          continue;
+        }
+        if ((int)pool.size() - need_k < home_floor) break; // 홈 예비 미달(need는 k에 비감소)
+        target = opp_hq; need_mass = clear_k; tb_fire = true;
+        bool conscript = false;
+        for (int i = 0; i < k; ++i) if (pool[i].draft) { conscript = true; break; }
+        if (conscript) { // 징집령(사용자 07-07): grind 밖 노동자 전원 웨이브 풀 편입
+          for (const auto &tb : pool) if (tb.draft) army.push_back(tb.w);
           attack_force = (int)army.size();
         }
+#ifdef CRLDBG
+        if (g_crl_live)
+          std::cerr << "# CRL T" << turn << " TBRAID k=" << k << " eta=" << eta_k
+                    << " clear=" << clear_k << " retrain=" << retrain << " pool=" << pool.size()
+                    << " keep=" << home_floor << " conscript=" << (conscript ? 1 : 0) << "\n";
+#endif
+        break;
       }
     }
   }
@@ -2369,7 +2402,10 @@ static Cmds decide(const SimState &S, const GameMap &M, const Paths &P, const Re
   // (잔여 리스크: grind가 빠른 러쉬를 과소투영 + 전군이 먼 공성에 이동잠금이면 회수 불가 — grind
   // 투영 정확도 문제이지 잉여 침범 아님.)
   bool may_launch = true;
-  if (target >= 0 && need_mass <= 64 && !wave_in_flight && attack_force >= need_mass && may_launch) {
+  // tb_fire는 wave_in_flight 무시(사용자 07-07, 93481 ③): 극후반 기지 웨이브가 늘 떠 있어
+  // 판정 레이드가 창을 소진하던 것 차단 — 커밋을 opp_hq로 교체(이동 중 몸은 규칙상 그대로,
+  // 정지 잉여만 재발사; 다음 턴 커밋 추적은 104행 유닛을 따라감).
+  if (target >= 0 && need_mass <= 64 && (!wave_in_flight || tb_fire) && attack_force >= need_mass && may_launch) {
     // 전방 raider(사용자 요청, 검증된 인간 전략): 무른(need≤raid_cap) JIT-안전 기지엔
     // 소수 raid party(raid_cap=5, 후반 7)만 sortie해 연속 파괴 + hit&return, 주력은
     // 홈 수비. 저HP 귀환병은 partition이 노동 회수·고HP 교체(rotation 자동). 방어된
